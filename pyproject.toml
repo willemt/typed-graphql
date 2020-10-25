@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Use types to have a simpler graphql implementation"
 authors = ["Willem Thiart <himself@willemthiart.com>"]
 license = "BSD-3-clause"
-include = ["py2graphql/py.typed"]
+include = ["typed_graphql/py.typed"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
