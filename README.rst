@@ -4,8 +4,14 @@ typed-graphql
 
 What
 ----
-Use python types to help create graphql schemas in less code.
+Use Python types to help create Graphql schemas in less code.
 
+typed-graphl is a thin layer over graphql-core.
+
+Why
+---
+1. Much of your schema can be defined by using types, reducing code size.
+2. It's more flexible to use a thin layer over graphql-core, as opposed to a large framework.
 
 Installation
 ------------

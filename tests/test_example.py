@@ -2,7 +2,7 @@ from functools import partial
 from typing import Any, List, Optional
 
 from graphql import graphql_sync
-from graphql.type import GraphQLSchema
+from graphql.type import GraphQLField, GraphQLObjectType, GraphQLSchema, GraphQLString
 
 from typed_graphql import SimpleResolver, TypedGraphQLObject
 
@@ -67,3 +67,55 @@ def test_example():
         ]
     }
     assert result.errors is None
+
+
+def test_interpersed_usage():
+    class Status(TypedGraphQLObject):
+        text: SimpleResolver[str] = lambda data, info: "enabled"
+
+    class User(TypedGraphQLObject):
+        value: SimpleResolver[str] = lambda data, info: data["value"]
+        status: SimpleResolver[Status] = lambda data, info: Status()
+
+    query = GraphQLObjectType(
+        "Query",
+        lambda: {
+            "user": GraphQLField(
+                User.graphql_type, resolve=lambda d, i: User({"value": "xxx"})
+            )
+        },
+    )
+
+    schema = GraphQLSchema(query=query)
+    result = graphql_sync(schema, "{user {value status {text}}}")
+    assert result.data == {'user': {'status': {'text': 'enabled'}, 'value': 'xxx'}}
+
+
+def test_interpersed_usage_with_sub_selections():
+    Status = GraphQLObjectType( # NOQA
+        "Status",
+        {
+            "text": GraphQLField(GraphQLString, resolve=lambda data, info: data["something"])
+        })
+
+    class User(TypedGraphQLObject):
+        value: SimpleResolver[str] = lambda d, info: d["value"]
+
+        # Can't do this because "Status" isn't a type
+        # status: SimpleResolver[Status] = lambda d, info: {"something": "xxx"}
+
+        def status(data, info) -> Status:
+            return {"something": "xxx"}  # type: ignore
+
+    query = GraphQLObjectType(
+        "Query",
+        lambda: {
+            "user": GraphQLField(
+                User.graphql_type, resolve=lambda d, i: User({"value": "xxx"})
+            )
+        },
+    )
+
+    schema = GraphQLSchema(query=query)
+    result = graphql_sync(schema, "{user {value}}")
+    assert result.data == {"user": {"value": "xxx"}}

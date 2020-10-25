@@ -1,4 +1,3 @@
-from functools import partial
 from typing import Any, List, Optional
 
 from graphql import graphql_sync
@@ -40,7 +39,7 @@ def test_int():
 def test_expects_int():
     class Query(TypedGraphQLObject):
         def user(data, info) -> int:
-            return "xxx"
+            return "xxx"  # type: ignore
 
     schema = GraphQLSchema(query=Query.graphql_type)
     result = graphql_sync(schema, "{user}")

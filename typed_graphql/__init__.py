@@ -34,8 +34,8 @@ class classproperty(object):  # NOQA
 class TypedGraphQLObject:
     graphql_object_class = GraphQLObjectType
 
-    def __init__(self, data: dict):
-        self.data = data
+    def __init__(self, data: dict = None):
+        self.data = data or {}
 
     def __getitem__(self, x: str):
         return self.data[x]
@@ -107,6 +107,8 @@ def python_type_to_graphql_type(t, nonnull=True):
                 raise Exception
         else:
             raise Exception
+    elif isinstance(t, GraphQLObjectType):
+        return t
     elif issubclass(t, TypedGraphQLObject):
         if nonnull:
             return GraphQLNonNull(t.graphql_type)
