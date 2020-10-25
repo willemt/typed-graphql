@@ -105,7 +105,7 @@ def test_interpersed_usage_with_sub_selections():
         # status: SimpleResolver[Status] = lambda d, info: {"something": "xxx"}
 
         def status(data, info) -> Status:
-            return {"something": "xxx"}  # type: ignore
+            return {"something": "enabled"}  # type: ignore
 
     query = GraphQLObjectType(
         "Query",
@@ -117,5 +117,5 @@ def test_interpersed_usage_with_sub_selections():
     )
 
     schema = GraphQLSchema(query=query)
-    result = graphql_sync(schema, "{user {value}}")
-    assert result.data == {"user": {"value": "xxx"}}
+    result = graphql_sync(schema, "{user {value status { text }}}")
+    assert result.data == {'user': {'status': {'text': 'enabled'}, 'value': 'xxx'}}
