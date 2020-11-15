@@ -1,3 +1,4 @@
+from functools import wraps
 from typing import Any, List, Optional
 
 from graphql import graphql_sync
@@ -147,3 +148,83 @@ def test_sub_selection():
     schema = GraphQLSchema(query=Query.graphql_type)
     result = graphql_sync(schema, "{user {value}}")
     assert result.data == {"user": {"value": "xxx"}}
+
+
+def test_auto_camelcase_attribute():
+    class User(TypedGraphQLObject):
+        my_value: SimpleResolver[str] = lambda d, info: d["value"]
+
+    class Query(TypedGraphQLObject):
+        user: SimpleResolver[User] = lambda data, info: User({"value": "xxx"})
+
+    schema = GraphQLSchema(query=Query.graphql_type)
+    result = graphql_sync(schema, "{user {myValue}}")
+    assert result.data == {"user": {"myValue": "xxx"}}
+
+
+def test_auto_camelcase_argument():
+    class User(TypedGraphQLObject):
+        def value(data, info, phone_number: str = "") -> str:
+            return "zzz"
+
+    class Query(TypedGraphQLObject):
+        user: SimpleResolver[User] = lambda data, info: User({"value": "xxx"})
+
+    schema = GraphQLSchema(query=Query.graphql_type)
+    result = graphql_sync(schema, '{user {value(phoneNumber: "100")}}')
+    assert result.data == {"user": {"value": "zzz"}}
+
+
+def my_wrapper(func):
+    @wraps(func)
+    def wrapper(data, info, **kwargs):
+        return func(data, info, **kwargs)
+    return wrapper
+
+
+def test_decorated_attribute_works_fine():
+    class User(TypedGraphQLObject):
+        @my_wrapper
+        def value(data, info, phonenumber: str = "") -> str:
+            return "zzz"
+
+    class Query(TypedGraphQLObject):
+        user: SimpleResolver[User] = lambda data, info: User({"value": "xxx"})
+
+    schema = GraphQLSchema(query=Query.graphql_type)
+    result = graphql_sync(schema, '{user {value(phonenumber: "100")}}')
+    assert result.data == {"user": {"value": "zzz"}}
+
+
+def test_simple_resolver_uses_function():
+    def resolve_user(data, info):
+        return {"value": "xxx"}
+
+    class User(TypedGraphQLObject):
+        def value(data, info, phonenumber: str = "") -> str:
+            return "zzz"
+
+    class Query(TypedGraphQLObject):
+        user: SimpleResolver[User] = resolve_user
+
+    schema = GraphQLSchema(query=Query.graphql_type)
+    result = graphql_sync(schema, '{user {value(phonenumber: "100")}}')
+    assert result.data == {"user": {"value": "zzz"}}
+
+
+def test_assigned_function_works_fine():
+    def resolve_value(data, info, phonenumber: str) -> str:
+        return "100"
+
+    class User(TypedGraphQLObject):
+        value = resolve_value
+
+    def resolve_user(data, info) -> User:
+        return User({"value": "xxx"})
+
+    class Query(TypedGraphQLObject):
+        user = resolve_user
+
+    schema = GraphQLSchema(query=Query.graphql_type)
+    result = graphql_sync(schema, '{user {value(phonenumber: "100")}}')
+    assert result.data == {"user": {"value": "100"}}

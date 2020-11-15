@@ -1,4 +1,5 @@
 import inspect
+from functools import partial
 from typing import Callable, TypeVar
 
 from graphql.pyutils import camel_to_snake, snake_to_camel
@@ -70,8 +71,10 @@ class TypedGraphQLObject:
             # if params[1][0] != "info":
             #     raise Exception("2nd parameter of function should be 'info'")
 
+            has_snake_case_args = any("_" in param_name for param_name, param in params[2:])
+
             args = {
-                param_name: GraphQLArgument(
+                snake_to_camel(param_name, upper=False): GraphQLArgument(
                     python_type_to_graphql_type(param.annotation)
                 )
                 for param_name, param in params[2:]
@@ -83,8 +86,18 @@ class TypedGraphQLObject:
                 return_type = signature.return_annotation
                 # return_type = attr.__annotations__["return"]
 
+            # TODO: Need async version
+            def resolver_shim(func, data, info, *args, **kwargs):
+                kwargs = {camel_to_snake(k): v for k, v in kwargs.items()}
+                return func(data, info, *args, **kwargs)
+
+            if has_snake_case_args:
+                resolver = partial(resolver_shim, attr)
+            else:
+                resolver = attr
+
             field = Field(
-                python_type_to_graphql_type(return_type), args=args, resolve=attr
+                python_type_to_graphql_type(return_type), args=args, resolve=resolver
             )
             field_name = snake_to_camel(attr_name, upper=False)
             fields[field_name] = field
