@@ -4,7 +4,9 @@ typed-graphql
 
 What
 ----
-Use Python types to help create Graphql schemas in less code.
+What if writing types for your GraphQL resolvers resulted in you defining your schema?
+
+Use Python types to create GraphQL schemas in less code.
 
 typed-graphl is a thin layer over graphql-core.
 
@@ -13,13 +15,45 @@ Why
 1. Much of your schema can be defined by using types, reducing code size.
 2. It's more flexible to use a thin layer over graphql-core, as opposed to a large framework.
 
+
+Graphene:
+
+.. code-block:: python
+   :class: ignore
+
+   import graphene
+
+   class Query(graphene.ObjectType):
+       hello = graphene.String(description='A typical hello world')
+
+       def resolve_hello(self, info):
+           return 'World'
+
+   schema = graphene.Schema(query=Query)
+
+
+Typed-graphql:
+
+.. code-block:: python
+   :class: ignore
+
+   from graphql import graphql_sync
+   from graphql.type import GraphQLSchema
+   from typed_graphql import SimpleResolver, TypedGraphQLObject
+
+   class Query(TypedGraphQLObject):
+       def hello(data, info) -> str:
+           return 'World'
+
+   schema = GraphQLSchema(query=Query.graphql_type)
+
+
 Installation
 ------------
 .. code-block:: bash
    :class: ignore
 
    pip install typed-graphql
-
 
 Example
 -------
