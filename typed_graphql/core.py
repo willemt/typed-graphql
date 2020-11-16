@@ -106,7 +106,10 @@ class TypedGraphQLObject:
 
 
 def python_type_to_graphql_type(t, nonnull=True):
-    if str(t).startswith("typing.List"):
+    if str(t).startswith("typing.Iterable"):
+        assert len(t.__args__) == 1
+        return GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
+    elif str(t).startswith("typing.List"):
         assert len(t.__args__) == 1
         return GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
     if str(t).startswith("graphql.type.definition.GraphQLList"):
