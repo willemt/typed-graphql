@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Any, List, Optional
+from typing import Any, Iterable, List, Optional
 
 from graphql import graphql_sync
 from graphql.type import GraphQLSchema
@@ -228,3 +228,20 @@ def test_assigned_function_works_fine():
     schema = GraphQLSchema(query=Query.graphql_type)
     result = graphql_sync(schema, '{user {value(phonenumber: "100")}}')
     assert result.data == {"user": {"value": "100"}}
+
+
+def test_object_type_can_be_referenced_more_than_once():
+    class User(TypedGraphQLObject):
+        def value(data, info) -> str:
+            return "xxx"
+
+    class Query(TypedGraphQLObject):
+        def users(data, info) -> Iterable[User]:
+            return [User({})]
+
+        def users2(data, info) -> Iterable[User]:
+            return [User({})]
+
+    schema = GraphQLSchema(query=Query.graphql_type)
+    result = graphql_sync(schema, '{users {value}}')
+    assert result.data == {'users': [{'value': 'xxx'}]}

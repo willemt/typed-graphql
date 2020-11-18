@@ -50,6 +50,8 @@ class TypedGraphQLObject:
 
     @classproperty
     def graphql_type(cls):
+        if hasattr(cls, "_graphql_type"):
+            return cls._graphql_type
 
         fields = {}
 
@@ -102,10 +104,14 @@ class TypedGraphQLObject:
             field_name = snake_to_camel(attr_name, upper=False)
             fields[field_name] = field
 
-        return cls.graphql_object_class(cls.__name__, fields)
+        cls._graphql_type = cls.graphql_object_class(cls.__name__, fields)
+        return cls._graphql_type
 
 
 def python_type_to_graphql_type(t, nonnull=True):
+    if str(t).startswith("typing.AsyncIterator"):
+        assert len(t.__args__) == 1
+        return GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
     if str(t).startswith("typing.Iterable"):
         assert len(t.__args__) == 1
         return GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
