@@ -16,7 +16,6 @@ def strict_get(field: str, data, info) -> Any:
 
 
 class User(TypedGraphQLObject):
-
     # Regular method
     def name(data, info) -> str:
         return data.get("name") + "1"

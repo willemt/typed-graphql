@@ -7,16 +7,18 @@ from graphql.type import (
     GraphQLArgument,
     GraphQLBoolean as Boolean,
     GraphQLField as Field,
+    GraphQLInputField as InputField,
     GraphQLFloat as Float,
     GraphQLInt as Int,
     GraphQLList,
     GraphQLNonNull,
+    GraphQLInputObjectType,
     GraphQLObjectType,
     GraphQLString as String,
 )
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 SimpleResolver = Callable[[dict, dict], T]
 
@@ -72,14 +74,22 @@ class TypedGraphQLObject:
             #     raise Exception("1st parameter of function should be 'data'")
             # if params[1][0] != "info":
             #     raise Exception("2nd parameter of function should be 'info'")
+            if not params:
+                raise Exception("First two args should be 'data' and 'info'")
 
-            has_snake_case_args = any("_" in param_name for param_name, param in params[2:])
+            arg_offset = 2
+            if len(params) < 2:
+                raise Exception("First two args should be 'data' and 'info'")
+
+            has_snake_case_args = any(
+                "_" in param_name for param_name, param in params[arg_offset:]
+            )
 
             args = {
                 snake_to_camel(param_name, upper=False): GraphQLArgument(
                     python_type_to_graphql_type(param.annotation)
                 )
-                for param_name, param in params[2:]
+                for param_name, param in params[arg_offset:]
             }
 
             try:
@@ -101,6 +111,47 @@ class TypedGraphQLObject:
             field = Field(
                 python_type_to_graphql_type(return_type), args=args, resolve=resolver
             )
+            field_name = snake_to_camel(attr_name, upper=False)
+            fields[field_name] = field
+
+        cls._graphql_type = cls.graphql_object_class(cls.__name__, fields)
+        return cls._graphql_type
+
+
+class TypedInputGraphQLObject:
+    graphql_object_class = GraphQLInputObjectType
+
+    def __init__(self, data: dict = None):
+        self.data = data or {}
+
+    def __getitem__(self, x: str):
+        return self.data[x]
+
+    def get(self, x: str):
+        return self.data.get(x)
+
+    def __getattribute__(self, name):
+        py_name = camel_to_snake(name)
+        return super().__getattribute__(py_name)
+
+    @classproperty
+    def graphql_type(cls):
+        if hasattr(cls, "_graphql_type"):
+            return cls._graphql_type
+
+        fields = {}
+
+        public_attrs = (
+            (attr_name, y)
+            for attr_name, y in cls.__annotations__.items()
+            if not attr_name.startswith("_")
+        )
+
+        for attr_name, attr in public_attrs:
+            if attr_name.startswith("_"):
+                continue
+
+            field = InputField(python_type_to_graphql_type(attr))
             field_name = snake_to_camel(attr_name, upper=False)
             fields[field_name] = field
 
@@ -131,6 +182,10 @@ def python_type_to_graphql_type(t, nonnull=True):
             raise Exception
     elif isinstance(t, GraphQLObjectType):
         return t
+    elif issubclass(t, TypedInputGraphQLObject):
+        if nonnull:
+            return GraphQLNonNull(t.graphql_type)
+        return t.graphql_type
     elif issubclass(t, TypedGraphQLObject):
         if nonnull:
             return GraphQLNonNull(t.graphql_type)
