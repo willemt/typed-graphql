@@ -1,6 +1,6 @@
 import inspect
 from functools import partial
-from typing import Callable, TypeVar
+from typing import Any, Callable, TypeVar
 
 from graphql.pyutils import camel_to_snake, snake_to_camel
 from graphql.type import (
@@ -43,8 +43,8 @@ class TypedGraphQLObject:
     def __getitem__(self, x: str):
         return self.data[x]
 
-    def get(self, x: str):
-        return self.data.get(x)
+    def get(self, x: str, optional: Any = None):
+        return self.data.get(x, optional)
 
     def __getattribute__(self, name):
         py_name = camel_to_snake(name)
@@ -127,8 +127,8 @@ class TypedInputGraphQLObject:
     def __getitem__(self, x: str):
         return self.data[x]
 
-    def get(self, x: str):
-        return self.data.get(x)
+    def get(self, x: str, optional: Any = None):
+        return self.data.get(x, optional)
 
     def __getattribute__(self, name):
         py_name = camel_to_snake(name)

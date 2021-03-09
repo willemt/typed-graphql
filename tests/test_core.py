@@ -196,6 +196,19 @@ def test_decorated_attribute_works_fine():
     assert result.data == {"user": {"value": "zzz"}}
 
 
+def test_osupports_default_argument_on_get_method():
+    class User(TypedGraphQLObject):
+        def value(data, info, phonenumber: str = "") -> str:
+            return data.get("valuex", "xxx")
+
+    class Query(TypedGraphQLObject):
+        user: SimpleResolver[User] = lambda data, info: User({"value": "123"})
+
+    schema = GraphQLSchema(query=Query.graphql_type)
+    result = graphql_sync(schema, '{user {value(phonenumber: "100")}}')
+    assert result.data == {"user": {"value": "xxx"}}
+
+
 def test_simple_resolver_uses_function():
     def resolve_user(data, info):
         return {"value": "xxx"}
