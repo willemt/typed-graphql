@@ -18,6 +18,20 @@ def test_input():
     assert str(x.fields["name"].type) == "String!"
 
 
+def test_nested_input():
+    class AddressInput(TypedInputGraphQLObject):
+        name: str
+
+    class UserInput(TypedInputGraphQLObject):
+        name: str
+        address: AddressInput
+
+    x = UserInput.graphql_type
+    assert x.fields.keys() == {"name", "address"}
+    assert str(x.fields["name"].type) == "String!"
+    assert str(x.fields["address"].type) == "AddressInput!"
+
+
 def test_snake_case():
     class UserInput(TypedInputGraphQLObject):
         name: str
