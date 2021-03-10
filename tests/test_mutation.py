@@ -1,3 +1,4 @@
+import enum
 from typing import Any, List, Optional
 
 from graphql import graphql_sync
@@ -76,3 +77,37 @@ def test_mutation_with_input_object():
     }
     """)
     assert result.data == {"createUser": {"name": "123"}}
+
+
+def test_mutation_with_enum_input_object():
+    class Colour(enum.Enum):
+        RED = '1'
+        BLUE = '2'
+        GREEN = '3'
+
+    class User(TypedGraphQLObject):
+        colour: SimpleResolver[Colour] = lambda d, info: d["colour"]
+
+    class Query(TypedGraphQLObject):
+        user: SimpleResolver[str] = lambda data, info: ""
+
+    class UserInput(TypedInputGraphQLObject):
+        colour: Colour
+
+    class Mutation(TypedGraphQLObject):
+        def create_user(
+            data,
+            info,
+            user: UserInput
+        ) -> User:
+            return User({"colour": user["colour"]})
+
+    schema = GraphQLSchema(query=Query.graphql_type, mutation=Mutation.graphql_type)
+    result = graphql_sync(schema, """
+    mutation createUser {
+        createUser(user: {colour: RED}) {
+            colour
+        }
+    }
+    """)
+    assert result.data == {"createUser": {"colour": "RED"}}

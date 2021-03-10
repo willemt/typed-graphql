@@ -1,6 +1,13 @@
+import enum
 from typing import List, Optional
 
 from typed_graphql import TypedInputGraphQLObject
+
+
+class MyEnum(enum.Enum):
+    RED = '1'
+    BLUE = '2'
+    GREEN = '3'
 
 
 def test_input():
@@ -39,3 +46,13 @@ def test_snake_case():
 
     x = UserInput.graphql_type
     assert x.fields.keys() == {"name", "streetAddress"}
+
+
+def test_enum():
+    class UserInput(TypedInputGraphQLObject):
+        name: str
+        usertype: MyEnum
+
+    x = UserInput.graphql_type
+    assert x.fields.keys() == {"name", "usertype"}
+    assert str(x.fields["usertype"].type) == "MyEnum!"

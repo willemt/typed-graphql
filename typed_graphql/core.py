@@ -1,3 +1,4 @@
+import enum
 import inspect
 from functools import partial
 from typing import Any, Callable, TypeVar
@@ -6,13 +7,14 @@ from graphql.pyutils import camel_to_snake, snake_to_camel
 from graphql.type import (
     GraphQLArgument,
     GraphQLBoolean as Boolean,
+    GraphQLEnumType,
     GraphQLField as Field,
-    GraphQLInputField as InputField,
     GraphQLFloat as Float,
+    GraphQLInputField as InputField,
+    GraphQLInputObjectType,
     GraphQLInt as Int,
     GraphQLList,
     GraphQLNonNull,
-    GraphQLInputObjectType,
     GraphQLObjectType,
     GraphQLString as String,
 )
@@ -180,8 +182,6 @@ def python_type_to_graphql_type(t, nonnull=True):
                 raise Exception
         else:
             raise Exception
-    elif isinstance(t, GraphQLObjectType):
-        return t
     elif issubclass(t, TypedInputGraphQLObject):
         if nonnull:
             return GraphQLNonNull(t.graphql_type)
@@ -206,5 +206,14 @@ def python_type_to_graphql_type(t, nonnull=True):
         if nonnull:
             return GraphQLNonNull(Float)
         return Float
+    elif issubclass(t, enum.Enum):
+        if not hasattr(t, "_graphql_type"):
+            t._graphql_type = GraphQLEnumType(
+                t.__name__,
+                dict(t.__members__)
+            )
+        if nonnull:
+            return GraphQLNonNull(t._graphql_type)
+        return t._graphql_type
     else:
         raise Exception(t)
