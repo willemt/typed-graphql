@@ -182,6 +182,12 @@ def python_type_to_graphql_type(t, nonnull=True):
                 raise Exception
         else:
             raise Exception
+
+    elif isinstance(t, GraphQLObjectType):
+        if nonnull:
+            return GraphQLNonNull(t)
+        return t
+
     elif issubclass(t, TypedInputGraphQLObject):
         if nonnull:
             return GraphQLNonNull(t.graphql_type)
