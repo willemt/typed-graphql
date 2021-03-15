@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Tuple
 
 from graphql import graphql_sync
 from graphql.type import GraphQLField, GraphQLSchema, GraphQLString, GraphQLObjectType
@@ -77,6 +77,21 @@ def test_string_list():
     class Query(TypedGraphQLObject):
         def user(data, info) -> List[str]:
             return ["abc", "def"]
+
+    assert str(Query.graphql_type.fields["user"].type) == '[String!]'
+
+    schema = GraphQLSchema(query=Query.graphql_type)
+    result = graphql_sync(schema, "{user}")
+    assert result.data == {"user": ["abc", "def"]}
+    assert result.errors is None
+
+
+def test_string_tuple():
+    class Query(TypedGraphQLObject):
+        def user(data, info) -> Tuple[str, str]:
+            return "abc", "def"
+
+    assert str(Query.graphql_type.fields["user"].type) == '[String!]'
 
     schema = GraphQLSchema(query=Query.graphql_type)
     result = graphql_sync(schema, "{user}")
