@@ -73,6 +73,18 @@ def test_str():
     assert str(Query.graphql_type.fields["user"].type) == 'String!'
 
 
+def test_optional_str():
+    class Query(TypedGraphQLObject):
+        def user(data, info, x: Optional[str] = None) -> str:
+            return "a string!"
+
+    schema = GraphQLSchema(query=Query.graphql_type)
+    result = graphql_sync(schema, "{user}")
+    assert result.data == {"user": "a string!"}
+    assert result.errors is None
+    assert str(Query.graphql_type.fields["user"].type) == 'String!'
+
+
 def test_string_list():
     class Query(TypedGraphQLObject):
         def user(data, info) -> List[str]:
