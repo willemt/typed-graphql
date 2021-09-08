@@ -172,12 +172,13 @@ def python_type_to_graphql_type(t, nonnull=True):
         assert len(t.__args__) == 1
         return GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
     elif str(t).startswith("typing.Tuple"):
-        assert len(t.__args__) == 1
+        if not len(set(t.__args__)) == 1:
+            raise Exception("tuples must have the same type for all members")
         return GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
     if str(t).startswith("graphql.type.definition.GraphQLList"):
         assert len(t.__args__) == 1
         return GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
-    elif str(t).startswith("typing.Union") or str(t).startswith("typing.Optional"): 
+    elif str(t).startswith("typing.Union") or str(t).startswith("typing.Optional"):
         if len(t.__args__) == 2:
             if issubclass(t.__args__[1], type(None)):
                 return python_type_to_graphql_type(t.__args__[0], nonnull=False)
