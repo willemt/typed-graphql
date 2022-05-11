@@ -1,1 +1,6 @@
-from .core import SimpleResolver, TypedGraphQLObject, TypedInputGraphQLObject
+from .core import (
+    graphql_type,
+    resolver,
+    staticresolver,
+    graphql_input_type,
+)

@@ -39,13 +39,14 @@ Typed-graphql:
 
    from graphql import graphql_sync
    from graphql.type import GraphQLSchema
-   from typed_graphql import SimpleResolver, TypedGraphQLObject
+   from typed_graphql import graphql_type, staticresolver
 
-   class Query(TypedGraphQLObject):
+   class Query:
+       @staticresolver
        def hello(data, info) -> str:
            return 'World'
 
-   schema = GraphQLSchema(query=Query.graphql_type)
+   schema = GraphQLSchema(query=graphql_type(Query))
 
 
 Installation
@@ -55,59 +56,60 @@ Installation
 
    pip install typed-graphql
 
+
+Philosophy
+----------
+
+1. Not a framework. If you want to do something off-script, go for it
+2. Python type driven GraphQL schemas
+3. Use Python builtins as much as possible (ie. dataclass, dict, TypedDict)
+4. Be a thin layer over graphql-core
+
 Example
 -------
 .. code-block:: python
    :class: ignore
 
    from functools import partial
-   from typing import Any, List, Optional
+   from typing import Any, List, Optional, TypedDict
 
    from graphql import graphql_sync
    from graphql.type import GraphQLSchema
 
-   from typed_graphql import SimpleResolver, TypedGraphQLObject
+   from typed_graphql import graphql_type, staticresolver
 
 
-   def get(field: str, data, info) -> Optional[Any]:
-       return data.get(field)
-
-
-   def strict_get(field: str, data, info) -> Any:
-       return data[field]
-
-
-   class User(TypedGraphQLObject):
+   class User(TypedDict):
 
        # Regular method
+       @staticresolver
        def name(data, info) -> str:
-           return data.get("name") + "1"
+           return data.get("name", "") + "1"
 
        # Optional respects not null types
        # Auto camelCases the attribute
+       @staticresolver
        def optional_name(data, info) -> Optional[str]:
-           return data.get("name") + "1"
+           return data.get("name", "") + "1"
 
        # Method with typed argument
+       @staticresolver
        def addresses(data, info, limit: int) -> List[str]:
            return ["address1", "address2"]
 
-       # Function assignment
-       enabled: SimpleResolver[bool] = partial(strict_get, "status")
 
-
-   class Query(TypedGraphQLObject):
+   class Query:
+       @staticresolver
        def users(data, info) -> List[User]:
-           return [User({"name": "xxx", "status": False, "rate": 0.1})]
+           return [User(**{"name": "xxx", "status": False, "rate": 0.1})]
 
 
-   query = Query.graphql_type
-   schema = GraphQLSchema(query=Query.graphql_type)
+   query = graphql_type(Query)
+   schema = GraphQLSchema(query=graphql_type(Query))
 
    QUERY = """
    {
        users {
-           enabled
            name
            optionalName
            addresses(limit: 1)
@@ -120,7 +122,6 @@ Example
    assert result.data == {
        "users": [
            {
-               "enabled": False,
                "name": "xxx1",
                "optionalName": "xxx1",
                "addresses": ["address1", "address2"],

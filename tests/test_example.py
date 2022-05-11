@@ -4,7 +4,7 @@ from typing import Any, List, Optional
 from graphql import graphql_sync
 from graphql.type import GraphQLField, GraphQLObjectType, GraphQLSchema, GraphQLString
 
-from typed_graphql import SimpleResolver, TypedGraphQLObject
+from typed_graphql import graphql_type, staticresolver
 
 
 def get(field: str, data, info) -> Optional[Any]:
@@ -15,31 +15,36 @@ def strict_get(field: str, data, info) -> Any:
     return data[field]
 
 
-class User(TypedGraphQLObject):
+class User(dict):
     # Regular method
+    @staticresolver
     def name(data, info) -> str:
-        return data.get("name") + "1"
+        return data.get("name", "") + "1"
 
     # Optional respects not null types
     # Auto camelCases the attribute
+    @staticresolver
     def optional_name(data, info) -> Optional[str]:
-        return data.get("name") + "1"
+        return data.get("name", "") + "1"
 
     # Method with typed argument
+    @staticresolver
     def addresses(data, info, limit: int) -> List[str]:
         return ["address1", "address2"]
 
-    # Function assignment
-    enabled: SimpleResolver[bool] = partial(strict_get, "status")
+    @staticresolver
+    def enabled(data, info) -> bool:
+        return data["status"]
 
 
-class Query(TypedGraphQLObject):
+class Query:
+    @staticresolver
     def users(data, info) -> List[User]:
         return [User({"name": "xxx", "status": False, "rate": 0.1})]
 
 
-query = Query.graphql_type
-schema = GraphQLSchema(query=Query.graphql_type)
+query = graphql_type(Query)
+schema = GraphQLSchema(query=query)
 
 QUERY = """
 {
@@ -69,18 +74,25 @@ def test_example():
 
 
 def test_interpersed_usage():
-    class Status(TypedGraphQLObject):
-        text: SimpleResolver[str] = lambda data, info: "enabled"
+    class Status(dict):
+        @staticresolver
+        def text(data, info) -> str:
+            return "enabled"
 
-    class User(TypedGraphQLObject):
-        value: SimpleResolver[str] = lambda data, info: data["value"]
-        status: SimpleResolver[Status] = lambda data, info: Status()
+    class User(dict):
+        @staticresolver
+        def value(data, info) -> str:
+            return data["value"]
+
+        @staticresolver
+        def status(data, info) -> Status:
+            return Status()
 
     query = GraphQLObjectType(
         "Query",
         lambda: {
             "user": GraphQLField(
-                User.graphql_type, resolve=lambda d, i: User({"value": "xxx"})
+                graphql_type(User), resolve=lambda d, i: User({"value": "xxx"})
             )
         },
     )
@@ -97,12 +109,15 @@ def test_interpersed_usage_with_sub_selections():
             "text": GraphQLField(GraphQLString, resolve=lambda data, info: data["something"])
         })
 
-    class User(TypedGraphQLObject):
-        value: SimpleResolver[str] = lambda d, info: d["value"]
+    class User(dict):
+        @staticresolver
+        def value(d, info) -> str:
+            return d["value"]
 
         # Can't do this because "Status" isn't a type
         # status: SimpleResolver[Status] = lambda d, info: {"something": "xxx"}
 
+        @staticresolver
         def status(data, info) -> Status:
             return {"something": "enabled"}  # type: ignore
 
@@ -110,7 +125,7 @@ def test_interpersed_usage_with_sub_selections():
         "Query",
         lambda: {
             "user": GraphQLField(
-                User.graphql_type, resolve=lambda d, i: User({"value": "xxx"})
+                graphql_type(User), resolve=lambda d, i: User({"value": "xxx"})
             )
         },
     )

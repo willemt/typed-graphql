@@ -1,7 +1,7 @@
 import enum
-from typing import List, Optional
+from typing import List, Optional, TypedDict
 
-from typed_graphql import TypedInputGraphQLObject
+from typed_graphql import graphql_input_type
 
 
 class MyEnum(enum.Enum):
@@ -11,13 +11,13 @@ class MyEnum(enum.Enum):
 
 
 def test_input():
-    class UserInput(TypedInputGraphQLObject):
+    class UserInput(TypedDict):
         name: str
         age: Optional[int]
         children: List[str]
         badges: List[List[str]]
 
-    x = UserInput.graphql_type
+    x = graphql_input_type(UserInput)
     assert x.fields.keys() == {"name", "age", "children", "badges"}
     assert str(x.fields["age"].type) == "Int"
     assert str(x.fields["badges"].type) == "[[String!]]"
@@ -26,33 +26,33 @@ def test_input():
 
 
 def test_nested_input():
-    class AddressInput(TypedInputGraphQLObject):
+    class AddressInput(TypedDict):
         name: str
 
-    class UserInput(TypedInputGraphQLObject):
+    class UserInput(TypedDict):
         name: str
         address: AddressInput
 
-    x = UserInput.graphql_type
+    x = graphql_input_type(UserInput)
     assert x.fields.keys() == {"name", "address"}
     assert str(x.fields["name"].type) == "String!"
     assert str(x.fields["address"].type) == "AddressInput!"
 
 
 def test_snake_case():
-    class UserInput(TypedInputGraphQLObject):
+    class UserInput(TypedDict):
         name: str
         street_address: Optional[int]
 
-    x = UserInput.graphql_type
+    x = graphql_input_type(UserInput)
     assert x.fields.keys() == {"name", "streetAddress"}
 
 
 def test_enum():
-    class UserInput(TypedInputGraphQLObject):
+    class UserInput(TypedDict):
         name: str
         usertype: MyEnum
 
-    x = UserInput.graphql_type
+    x = graphql_input_type(UserInput)
     assert x.fields.keys() == {"name", "usertype"}
     assert str(x.fields["usertype"].type) == "MyEnum!"

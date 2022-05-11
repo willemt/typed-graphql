@@ -1,6 +1,7 @@
 import enum
 import inspect
-from functools import partial
+from dataclasses import is_dataclass
+from functools import partial, wraps
 from typing import Any, Callable, TypeVar
 
 from graphql.pyutils import camel_to_snake, snake_to_camel
@@ -17,151 +18,162 @@ from graphql.type import (
     GraphQLNonNull,
     GraphQLObjectType,
     GraphQLString as String,
+    GraphQLType,
 )
 
-
-T = TypeVar("T")
-
-SimpleResolver = Callable[[dict, dict], T]
+from typing_inspect import is_new_type
 
 
 RESERVED_ARGUMENT_NAMES = set(["data", "info", "return"])
 
 
-class classproperty(object):  # NOQA
-    def __init__(self, f):
-        self.f = f
+def resolver(f):
+    """
+    This method is a resolver
+    """
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        return f(*args, **kwargs)
+    wrapper.__is_resolver = True
+    return wrapper
 
-    def __get__(self, obj, owner):
-        return self.f(owner)
+
+def staticresolver(f):
+    """
+    This method is a resolver
+    We also automatically decorate it as a staticmethod
+    """
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        return f(*args, **kwargs)
+    wrapper.__is_resolver = True
+    return staticmethod(wrapper)
 
 
-class TypedGraphQLObject:
-    graphql_object_class = GraphQLObjectType
+def graphql_input_type(cls):
+    if hasattr(cls, "_graphql_type"):
+        return cls._graphql_type
 
-    def __init__(self, data: dict = None):
-        self.data = data or {}
+    fields = {}
 
-    def __getitem__(self, x: str):
-        return self.data[x]
+    public_attrs = (
+        (attr_name, y)
+        for attr_name, y in cls.__annotations__.items()
+        if not attr_name.startswith("_")
+    )
 
-    def get(self, x: str, optional: Any = None):
-        return self.data.get(x, optional)
+    for attr_name, attr in public_attrs:
+        if attr_name.startswith("_"):
+            continue
 
-    def __getattribute__(self, name):
-        py_name = camel_to_snake(name)
-        return super().__getattribute__(py_name)
+        field = InputField(python_type_to_graphql_type(attr, input_field=True))
+        field_name = snake_to_camel(attr_name, upper=False)
+        fields[field_name] = field
 
-    @classproperty
-    def graphql_type(cls):
-        if hasattr(cls, "_graphql_type"):
-            return cls._graphql_type
+    # return GraphQLInputObjectType(cls.__name__, fields)
+    cls._graphql_type = GraphQLInputObjectType(cls.__name__, fields)
+    return cls._graphql_type
 
-        fields = {}
 
-        public_attrs = (
-            (attr_name, y)
-            for attr_name, y in cls.__dict__.items()
-            if not attr_name.startswith("_")
+def graphql_type(cls, input_field: bool = False) -> GraphQLType:
+    """
+    Converts a class into a GraphQLType via introspection
+
+    input_field: is this an GraphQL input type?
+    """
+
+    if input_field:
+        return graphql_input_type(cls)
+
+    # Check cache
+    if hasattr(cls, "_graphql_type"):
+        return cls._graphql_type
+
+    fields = {}
+
+    def is_staticmethod(o):
+        return o.__class__.__name__ == "staticmethod"
+
+    def is_resolver(o):
+        if o.__class__.__name__ == "staticmethod":
+            return getattr(o.__func__, "__is_resolver", False)
+        return getattr(o, "__is_resolver", False)
+
+    def inspect_signature(o):
+        if o.__class__.__name__ == "staticmethod":
+            return inspect.signature(o.__func__)
+        return inspect.signature(o)
+
+    resolvers = [
+        (attr_name, y)
+        for attr_name, y in cls.__dict__.items()
+        if is_resolver(y)
+    ]
+
+    for attr_name, attr in resolvers:
+        signature = inspect_signature(attr)
+        params = list(signature.parameters.items())
+        if not params:
+            raise Exception("First two args should be 'data' and 'info'")
+
+        arg_offset = 2
+        if len(params) < 2:
+            raise Exception("First three args should be 'self', and 'info'")
+
+        has_snake_case_args = any(
+            "_" in param_name for param_name, param in params[arg_offset:]
         )
 
-        for attr_name, attr in public_attrs:
-            if attr_name.startswith("_"):
-                continue
-
-            signature = inspect.signature(attr)
-            params = list(signature.parameters.items())
-
-            # if params[0][0] != "data":
-            #     raise Exception("1st parameter of function should be 'data'")
-            # if params[1][0] != "info":
-            #     raise Exception("2nd parameter of function should be 'info'")
-            if not params:
-                raise Exception("First two args should be 'data' and 'info'")
-
-            arg_offset = 2
-            if len(params) < 2:
-                raise Exception("First two args should be 'data' and 'info'")
-
-            has_snake_case_args = any(
-                "_" in param_name for param_name, param in params[arg_offset:]
+        args = {
+            snake_to_camel(param_name, upper=False): GraphQLArgument(
+                python_type_to_graphql_type(param.annotation, input_field=True)
             )
+            for param_name, param in params[arg_offset:]
+        }
 
-            args = {
-                snake_to_camel(param_name, upper=False): GraphQLArgument(
-                    python_type_to_graphql_type(param.annotation)
-                )
-                for param_name, param in params[arg_offset:]
-            }
+        try:
+            return_type = cls.__annotations__[attr_name].__args__[-1]
+        except (AttributeError, KeyError):
+            return_type = signature.return_annotation
+            # return_type = attr.__annotations__["return"]
 
-            try:
-                return_type = cls.__annotations__[attr_name].__args__[-1]
-            except (AttributeError, KeyError):
-                return_type = signature.return_annotation
-                # return_type = attr.__annotations__["return"]
+        # TODO: Need async version
+        def resolver_shim(func, data, info, *args, **kwargs):
+            kwargs = {camel_to_snake(k): v for k, v in kwargs.items()}
+            return func(data, info, *args, **kwargs)
 
-            # TODO: Need async version
-            def resolver_shim(func, data, info, *args, **kwargs):
-                kwargs = {camel_to_snake(k): v for k, v in kwargs.items()}
-                return func(data, info, *args, **kwargs)
-
+        if is_staticmethod(attr):
+            if has_snake_case_args:
+                resolver = partial(resolver_shim, attr.__func__)
+            else:
+                resolver = attr.__func__
+        else:
             if has_snake_case_args:
                 resolver = partial(resolver_shim, attr)
             else:
                 resolver = attr
 
+        if is_staticmethod(attr):
             field = Field(
                 python_type_to_graphql_type(return_type), args=args, resolve=resolver
             )
-            field_name = snake_to_camel(attr_name, upper=False)
-            fields[field_name] = field
+        else:
+            field = Field(
+                python_type_to_graphql_type(return_type), args=args
+            )
 
-        cls._graphql_type = cls.graphql_object_class(cls.__name__, fields)
-        return cls._graphql_type
+        field_name = snake_to_camel(attr_name, upper=False)
+        fields[field_name] = field
 
-
-class TypedInputGraphQLObject:
-    graphql_object_class = GraphQLInputObjectType
-
-    def __init__(self, data: dict = None):
-        self.data = data or {}
-
-    def __getitem__(self, x: str):
-        return self.data[x]
-
-    def get(self, x: str, optional: Any = None):
-        return self.data.get(x, optional)
-
-    def __getattribute__(self, name):
-        py_name = camel_to_snake(name)
-        return super().__getattribute__(py_name)
-
-    @classproperty
-    def graphql_type(cls):
-        if hasattr(cls, "_graphql_type"):
-            return cls._graphql_type
-
-        fields = {}
-
-        public_attrs = (
-            (attr_name, y)
-            for attr_name, y in cls.__annotations__.items()
-            if not attr_name.startswith("_")
-        )
-
-        for attr_name, attr in public_attrs:
-            if attr_name.startswith("_"):
-                continue
-
-            field = InputField(python_type_to_graphql_type(attr))
-            field_name = snake_to_camel(attr_name, upper=False)
-            fields[field_name] = field
-
-        cls._graphql_type = cls.graphql_object_class(cls.__name__, fields)
-        return cls._graphql_type
+    cls._graphql_type = GraphQLObjectType(cls.__name__, fields)
+    return cls._graphql_type
 
 
-def python_type_to_graphql_type(t, nonnull=True):
+class PythonToGraphQLTypeConversionException(Exception):
+    pass
+
+
+def python_type_to_graphql_type(t, nonnull=True, input_field=False):
     if str(t).startswith("typing.AsyncIterator"):
         assert len(t.__args__) == 1
         return GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
@@ -187,6 +199,12 @@ def python_type_to_graphql_type(t, nonnull=True):
         else:
             raise Exception
 
+    elif is_new_type(t):
+        return python_type_to_graphql_type(t.__supertype__, input_field=input_field)
+
+    elif is_dataclass(t):
+        return graphql_type(t, input_field=input_field)
+
     elif isinstance(t, GraphQLObjectType):
         if nonnull:
             return GraphQLNonNull(t)
@@ -194,15 +212,7 @@ def python_type_to_graphql_type(t, nonnull=True):
 
     else:
         try:
-            if issubclass(t, TypedInputGraphQLObject):
-                if nonnull:
-                    return GraphQLNonNull(t.graphql_type)
-                return t.graphql_type
-            elif issubclass(t, TypedGraphQLObject):
-                if nonnull:
-                    return GraphQLNonNull(t.graphql_type)
-                return t.graphql_type
-            elif issubclass(t, str):
+            if issubclass(t, str):
                 if nonnull:
                     return GraphQLNonNull(String)
                 return String
@@ -227,8 +237,15 @@ def python_type_to_graphql_type(t, nonnull=True):
                 if nonnull:
                     return GraphQLNonNull(t._graphql_type)
                 return t._graphql_type
+
+            elif issubclass(t, dict):
+                if nonnull:
+                    return GraphQLNonNull(graphql_type(t, input_field=input_field))
+                return graphql_type(t, input_field=input_field)
+
             else:
-                raise Exception(t)
+                raise PythonToGraphQLTypeConversionException(t)
+
         except TypeError:
             print(f"Bad type: {t} of {type(t)}")
             raise
