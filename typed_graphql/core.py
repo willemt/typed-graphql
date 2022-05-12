@@ -201,11 +201,17 @@ def python_type_to_graphql_type(t, nonnull=True, input_field=False):
         return GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
     elif str(t).startswith("typing.List"):
         assert len(t.__args__) == 1
-        return GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
+        _t = GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
+        if nonnull:
+            return GraphQLNonNull(_t)
+        return _t
     elif str(t).startswith("typing.Tuple"):
         if not len(set(t.__args__)) == 1:
             raise Exception("tuples must have the same type for all members")
-        return GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
+        _t = GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
+        if nonnull:
+            return GraphQLNonNull(_t)
+        return _t
     if str(t).startswith("graphql.type.definition.GraphQLList"):
         assert len(t.__args__) == 1
         return GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
@@ -222,7 +228,10 @@ def python_type_to_graphql_type(t, nonnull=True, input_field=False):
         return python_type_to_graphql_type(t.__supertype__, input_field=input_field)
 
     elif is_dataclass(t):
-        return graphql_type(t, input_field=input_field)
+        _t = graphql_type(t, input_field=input_field)
+        if nonnull:
+            return GraphQLNonNull(_t)
+        return _t
 
     elif isinstance(t, GraphQLObjectType):
         if nonnull:

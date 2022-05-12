@@ -20,8 +20,8 @@ def test_input():
     x = graphql_input_type(UserInput)
     assert x.fields.keys() == {"name", "age", "children", "badges"}
     assert str(x.fields["age"].type) == "Int"
-    assert str(x.fields["badges"].type) == "[[String!]]"
-    assert str(x.fields["children"].type) == "[String!]"
+    assert str(x.fields["badges"].type) == "[[String!]!]!"
+    assert str(x.fields["children"].type) == "[String!]!"
     assert str(x.fields["name"].type) == "String!"
 
 

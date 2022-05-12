@@ -26,6 +26,7 @@ def test_core():
     result = graphql_sync(schema, "{user}")
     assert result.data == {"user": "xxx"}
     assert result.errors is None
+    assert str(graphql_type(Query).fields["user"].type) == 'String!'
 
 
 def test_resolve_prefix():
@@ -170,7 +171,21 @@ def test_string_list():
         def user(data, info) -> List[str]:
             return ["abc", "def"]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[String!]'
+    assert str(graphql_type(Query).fields["user"].type) == '[String!]!'
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user}")
+    assert result.data == {"user": ["abc", "def"]}
+    assert result.errors is None
+
+
+def test_optional_string_list():
+    class Query:
+        @staticresolver
+        def user(data, info) -> Optional[List[Optional[str]]]:
+            return ["abc", "def"]
+
+    assert str(graphql_type(Query).fields["user"].type) == '[String]'
 
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user}")
@@ -184,11 +199,31 @@ def test_string_tuple():
         def user(data, info) -> Tuple[str, str]:
             return "abc", "def"
 
-    assert str(graphql_type(Query).fields["user"].type) == '[String!]'
+    assert str(graphql_type(Query).fields["user"].type) == '[String!]!'
 
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user}")
     assert result.data == {"user": ["abc", "def"]}
+    assert result.errors is None
+
+
+def test_dataclass():
+    @dataclass
+    class User:
+        value: str
+
+        def resolve_value(self: "User", info) -> str:
+            return self.value
+
+    class Query:
+        def resolve_user(self, info) -> List[User]:
+            return [User(1)]
+
+    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    print(result.errors)
+    assert result.data == {"user": [{"value": "1"}]}
     assert result.errors is None
 
 
@@ -219,6 +254,7 @@ def test_graphql_object_type():
     result = graphql_sync(schema, "{user { text } }")
     assert result.data == {"user": {"text": "sometext"}}
     assert result.errors is None
+    assert str(graphql_type(Query).fields["user"].type) == 'Status!'
 
 
 def test_argument():
