@@ -1,4 +1,5 @@
 from .core import (
+    TypedGraphqlMiddlewareManager,
     graphql_type,
     resolver,
     staticresolver,

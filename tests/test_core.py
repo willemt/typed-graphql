@@ -5,7 +5,7 @@ from typing import Any, Iterable, List, Optional, Tuple, TypedDict
 from graphql import graphql_sync
 from graphql.type import GraphQLField, GraphQLSchema, GraphQLString, GraphQLObjectType
 
-from typed_graphql import graphql_type, resolver, staticresolver
+from typed_graphql import TypedGraphqlMiddlewareManager, graphql_type, resolver, staticresolver
 
 
 def get(field: str, data, info) -> Optional[Any]:
@@ -25,6 +25,51 @@ def test_core():
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user}")
     assert result.data == {"user": "xxx"}
+    assert result.errors is None
+
+
+def test_resolve_prefix():
+    class Query:
+        @staticmethod
+        def resolve_user(data, info) -> str:
+            return "xxx"
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user}")
+    assert result.data == {"user": "xxx"}
+    assert result.errors is None
+
+
+def test_resolve_prefix_with_object():
+    class Query:
+        def resolve_user(self, info) -> str:
+            return "xxx"
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    assert result.data == {"user": "xxx"}
+    assert result.errors is None
+
+
+def test_resolve_prefix_with_object_with_data():
+    class Query(dict):
+        def resolve_user(self, info) -> str:
+            return self.get("x", "")
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user}", Query(x=1), middleware=TypedGraphqlMiddlewareManager())
+    assert result.data == {"user": "1"}
+    assert result.errors is None
+
+
+def test_resolve_prefix_with_long_name_object_with_data():
+    class Query(dict):
+        def resolve_my_user(self, info) -> str:
+            return self.get("x", "")
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{myUser}", Query(x=1), middleware=TypedGraphqlMiddlewareManager())
+    assert result.data == {"myUser": "1"}
     assert result.errors is None
 
 

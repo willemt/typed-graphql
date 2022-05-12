@@ -4,6 +4,7 @@ from dataclasses import is_dataclass
 from functools import partial, wraps
 from typing import Any, Callable, TypeVar
 
+from graphql.execution import MiddlewareManager
 from graphql.pyutils import camel_to_snake, snake_to_camel
 from graphql.type import (
     GraphQLArgument,
@@ -25,6 +26,16 @@ from typing_inspect import is_new_type
 
 
 RESERVED_ARGUMENT_NAMES = set(["data", "info", "return"])
+
+
+class TypedGraphqlMiddlewareManager(MiddlewareManager):
+    def get_field_resolver(self, field_resolver):
+        def resolve(data, info, **args):
+            try:
+                return getattr(data, f"resolve_{camel_to_snake(info.field_name)}")(info, **args)
+            except AttributeError:
+                return field_resolver(data, info, **args)
+        return resolve
 
 
 def resolver(f):
@@ -95,8 +106,13 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
         return o.__class__.__name__ == "staticmethod"
 
     def is_resolver(o):
-        if o.__class__.__name__ == "staticmethod":
-            return getattr(o.__func__, "__is_resolver", False)
+        if is_staticmethod(o):
+            o = o.__func__
+        try:
+            if o.__name__.startswith("resolve_"):
+                return True
+        except AttributeError:
+            return False
         return getattr(o, "__is_resolver", False)
 
     def inspect_signature(o):
@@ -161,6 +177,9 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
             field = Field(
                 python_type_to_graphql_type(return_type), args=args
             )
+
+        if attr_name.startswith("resolve_"):
+            attr_name = attr_name[len("resolve_"):]
 
         field_name = snake_to_camel(attr_name, upper=False)
         fields[field_name] = field
