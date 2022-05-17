@@ -1,8 +1,8 @@
 import enum
 import inspect
-from dataclasses import is_dataclass
+from dataclasses import fields as dataclass_fields, is_dataclass
 from functools import partial, wraps
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, List, Optional, TypeVar
 
 from graphql.execution import MiddlewareManager
 from graphql.pyutils import camel_to_snake, snake_to_camel
@@ -86,6 +86,15 @@ def graphql_input_type(cls):
     return cls._graphql_type
 
 
+class resolverclass:  # NOQA
+    def __init__(self, resolver_blocklist: Optional[List[str]] = None):
+        self._resolver_blocklist = resolver_blocklist
+
+    def __call__(self, cls):
+        cls._resolver_blocklist = self._resolver_blocklist
+        return cls
+
+
 def graphql_type(cls, input_field: bool = False) -> GraphQLType:
     """
     Converts a class into a GraphQLType via introspection
@@ -119,6 +128,22 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
         if o.__class__.__name__ == "staticmethod":
             return inspect.signature(o.__func__)
         return inspect.signature(o)
+
+    # It's a dataclass so let's auto expose the fields
+    # Though an explicit resolver function always takes precedence
+    if is_dataclass(cls):
+        for f in dataclass_fields(cls):
+            if f.name in getattr(cls, '_resolver_blocklist', []):
+                continue
+            field_name = snake_to_camel(f.name, upper=False)
+
+            def resolver(data, info):
+                return getattr(data, f.name, None)
+
+            field = Field(
+                python_type_to_graphql_type(f.type), resolve=resolver
+            )
+            fields[field_name] = field
 
     resolvers = [
         (attr_name, y)

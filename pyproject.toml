@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "typed-graphql"
-version = "0.11.0-alpha.3"
+version = "0.11.0-alpha.4"
 description = "Use types to have a simpler graphql implementation"
 authors = ["Willem Thiart <himself@willemthiart.com>"]
 license = "BSD-3-clause"
