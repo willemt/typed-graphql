@@ -138,7 +138,7 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
             field_name = snake_to_camel(f.name, upper=False)
 
             def resolver(data, info):
-                return getattr(data, f.name, None)
+                return getattr(data, camel_to_snake(info.field_name), None)
 
             field = Field(
                 python_type_to_graphql_type(f.type), resolve=resolver
