@@ -68,6 +68,23 @@ def test_dataclass_with_multiple_fields():
     assert result.errors is None
 
 
+def test_dataclass_with_decorator():
+
+    @resolverclass()
+    @dataclass
+    class User:
+        xxx: Optional[str] = None
+
+    class Query:
+        def resolve_user(self, info) -> List[User]:
+            return [User("1")]
+
+    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user { xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    assert result.data == {"user": [{'xxx': '1'}]}
+
+
 def test_dataclass_can_block_resolvers():
 
     @resolverclass(resolver_blocklist=["xxx"])

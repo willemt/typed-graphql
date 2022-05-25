@@ -133,7 +133,7 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
     # Though an explicit resolver function always takes precedence
     if is_dataclass(cls):
         for f in dataclass_fields(cls):
-            if f.name in getattr(cls, '_resolver_blocklist', []):
+            if f.name in (getattr(cls, '_resolver_blocklist', None) or []):
                 continue
             field_name = snake_to_camel(f.name, upper=False)
 
