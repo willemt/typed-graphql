@@ -47,24 +47,23 @@ def test_async_string_list_with_snake_cased_arg():
     assert result.errors is None
 
 
-# NOTE: not supported by graphl-core
-# def test_async_iterator():
-#     async def aiter(lst):
-#       for i in lst:
-#           await asyncio.sleep(0.5)
-#           yield i
-#
-#     class Query:
-#         async def user(data, info) -> AsyncIterator[str]:
-#             await asyncio.sleep(0.5)
-#             return aiter(["abc", "def"])
-#
-#     schema = GraphQLSchema(query=graphql_type(Query))
-#     result = asyncio.new_event_loop().run_until_complete(
-#         graphql(schema, "{user}")
-#     )
-#     assert result.data == {"user": ["abc", "def"]}
-#     assert result.errors is None
+def test_async_iterator():
+    async def aiter(lst):
+        for i in lst:
+            await asyncio.sleep(0.5)
+            yield i
+
+    class Query:
+        @staticresolver
+        async def resolve_user(data, info) -> AsyncIterator[str]:
+            await asyncio.sleep(0.5)
+            return aiter(["abc", "def"])
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = asyncio.new_event_loop().run_until_complete(graphql(schema, "{user}"))
+    print(result.errors)
+    assert result.data == {"user": ["abc", "def"]}
+    assert result.errors is None
 
 
 def test_async_lists_resolved_in_parallel():
