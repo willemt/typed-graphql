@@ -233,7 +233,7 @@ def test_iterable():
         def user(data, info) -> Iterable[str]:
             return ["abc", "def"]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[String!]'
+    assert str(graphql_type(Query).fields["user"].type) == '[String!]!'
 
 
 def test_graphql_object_type():
