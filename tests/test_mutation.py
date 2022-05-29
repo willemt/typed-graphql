@@ -1,5 +1,5 @@
 import enum
-from typing import Any, List, Optional
+from typing import Any, List, Optional, TypedDict
 
 from graphql import graphql_sync
 from graphql.type import (
@@ -9,7 +9,7 @@ from graphql.type import (
     GraphQLString as String,
 )
 
-from typed_graphql import SimpleResolver, TypedGraphQLObject, TypedInputGraphQLObject
+from typed_graphql import graphql_type, staticresolver
 
 
 def get(field: str, data, info) -> Optional[Any]:
@@ -21,13 +21,18 @@ def strict_get(field: str, data, info) -> Any:
 
 
 def test_mutation():
-    class User(TypedGraphQLObject):
-        name: SimpleResolver[str] = lambda d, info: d["name"]
+    class User(dict):
+        @staticresolver
+        def name(d, info) -> str:
+            return d["name"]
 
-    class Query(TypedGraphQLObject):
-        user: SimpleResolver[str] = lambda data, info: ""
+    class Query:
+        @staticresolver
+        def user(data, info) -> str:
+            return""
 
-    class Mutation(TypedGraphQLObject):
+    class Mutation:
+        @staticresolver
         def create_user(
             data,
             info,
@@ -38,7 +43,7 @@ def test_mutation():
         ) -> User:
             return User({"name": name})
 
-    schema = GraphQLSchema(query=Query.graphql_type, mutation=Mutation.graphql_type)
+    schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
     result = graphql_sync(schema, """
     mutation createUser {
         createUser(size: 100, name: "XXX", phoneNumber: "10") {
@@ -50,17 +55,22 @@ def test_mutation():
 
 
 def test_mutation_with_input_object():
-    class User(TypedGraphQLObject):
-        name: SimpleResolver[str] = lambda d, info: d["name"]
+    class User(dict):
+        @staticresolver
+        def name(d, info) -> str:
+            return d["name"]
 
-    class Query(TypedGraphQLObject):
-        user: SimpleResolver[str] = lambda data, info: ""
+    class Query(dict):
+        @staticresolver
+        def user(d, info) -> str:
+            return ""
 
-    class UserInput(TypedInputGraphQLObject):
+    class UserInput(dict):
         id: str
         name: str
 
-    class Mutation(TypedGraphQLObject):
+    class Mutation:
+        @staticresolver
         def create_user(
             data,
             info,
@@ -68,7 +78,7 @@ def test_mutation_with_input_object():
         ) -> User:
             return User({"name": user["name"]})
 
-    schema = GraphQLSchema(query=Query.graphql_type, mutation=Mutation.graphql_type)
+    schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
     result = graphql_sync(schema, """
     mutation createUser {
         createUser(user: {id: "xxx", name: "123"}) {
@@ -85,16 +95,21 @@ def test_mutation_with_enum_input_object():
         BLUE = '2'
         GREEN = '3'
 
-    class User(TypedGraphQLObject):
-        colour: SimpleResolver[Colour] = lambda d, info: d["colour"]
+    class User(dict):
+        @staticresolver
+        def colour(d, info) -> Colour:
+            return d["colour"]
 
-    class Query(TypedGraphQLObject):
-        user: SimpleResolver[str] = lambda data, info: ""
+    class Query:
+        @staticresolver
+        def user(data, info) -> str:
+            return ""
 
-    class UserInput(TypedInputGraphQLObject):
+    class UserInput(TypedDict):
         colour: Colour
 
-    class Mutation(TypedGraphQLObject):
+    class Mutation:
+        @staticresolver
         def create_user(
             data,
             info,
@@ -102,7 +117,7 @@ def test_mutation_with_enum_input_object():
         ) -> User:
             return User({"colour": user["colour"]})
 
-    schema = GraphQLSchema(query=Query.graphql_type, mutation=Mutation.graphql_type)
+    schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
     result = graphql_sync(schema, """
     mutation createUser {
         createUser(user: {colour: RED}) {

@@ -6,7 +6,7 @@ from typing import Any, AsyncIterator, Iterable, Optional
 from graphql import graphql
 from graphql.type import GraphQLSchema
 
-from typed_graphql import SimpleResolver, TypedGraphQLObject
+from typed_graphql import graphql_type, staticresolver
 
 
 def get(field: str, data, info) -> Optional[Any]:
@@ -18,12 +18,13 @@ def strict_get(field: str, data, info) -> Any:
 
 
 def test_async_string_list():
-    class Query(TypedGraphQLObject):
+    class Query:
+        @staticresolver
         async def user(data, info) -> Iterable[str]:
             await asyncio.sleep(0.0)
             return iter(["abc", "def"])
 
-    schema = GraphQLSchema(query=Query.graphql_type)
+    schema = GraphQLSchema(query=graphql_type(Query))
     result = asyncio.new_event_loop().run_until_complete(
         graphql(schema, "{user}")
     )
@@ -32,12 +33,13 @@ def test_async_string_list():
 
 
 def test_async_string_list_with_snake_cased_arg():
-    class Query(TypedGraphQLObject):
+    class Query:
+        @staticresolver
         async def user(data, info, phone_number: int = 0) -> Iterable[str]:
             await asyncio.sleep(0.0)
             return iter(["abc", "def"])
 
-    schema = GraphQLSchema(query=Query.graphql_type)
+    schema = GraphQLSchema(query=graphql_type(Query))
     result = asyncio.new_event_loop().run_until_complete(
         graphql(schema, "{user(phoneNumber: 10)}")
     )
@@ -45,37 +47,38 @@ def test_async_string_list_with_snake_cased_arg():
     assert result.errors is None
 
 
-# NOTE: not supported by graphl-core
-# def test_async_iterator():
-#     async def aiter(lst):
-#       for i in lst:
-#           await asyncio.sleep(0.5)
-#           yield i
-#
-#     class Query(TypedGraphQLObject):
-#         async def user(data, info) -> AsyncIterator[str]:
-#             await asyncio.sleep(0.5)
-#             return aiter(["abc", "def"])
-#
-#     schema = GraphQLSchema(query=Query.graphql_type)
-#     result = asyncio.new_event_loop().run_until_complete(
-#         graphql(schema, "{user}")
-#     )
-#     assert result.data == {"user": ["abc", "def"]}
-#     assert result.errors is None
+def test_async_iterator():
+    async def aiter(lst):
+        for i in lst:
+            await asyncio.sleep(0.5)
+            yield i
+
+    class Query:
+        @staticresolver
+        async def resolve_user(data, info) -> AsyncIterator[str]:
+            await asyncio.sleep(0.5)
+            return aiter(["abc", "def"])
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = asyncio.new_event_loop().run_until_complete(graphql(schema, "{user}"))
+    print(result.errors)
+    assert result.data == {"user": ["abc", "def"]}
+    assert result.errors is None
 
 
 def test_async_lists_resolved_in_parallel():
-    class Query(TypedGraphQLObject):
+    class Query:
+        @staticresolver
         async def user(data, info, phone_number: int = 0) -> Iterable[str]:
             await asyncio.sleep(1.0)
             return iter(["abc", "def"])
 
+        @staticresolver
         async def xxx(data, info, phone_number: int = 0) -> Iterable[str]:
             await asyncio.sleep(1.0)
             return iter(["ghi", "jkl"])
 
-    schema = GraphQLSchema(query=Query.graphql_type)
+    schema = GraphQLSchema(query=graphql_type(Query))
 
     t0 = time.time()
     result = asyncio.new_event_loop().run_until_complete(
@@ -89,25 +92,29 @@ def test_async_lists_resolved_in_parallel():
 
 
 def test_multiple_async_lists_are_run_in_parallel():
-    class User(TypedGraphQLObject):
+    class User(dict):
+        @staticresolver
         async def value(data, info) -> str:
             await asyncio.sleep(1.0)
             return "xxx"
 
+        @staticresolver
         async def value2(data, info) -> str:
             await asyncio.sleep(1.0)
             return "xxx"
 
-    class Query(TypedGraphQLObject):
+    class Query:
+        @staticresolver
         async def users(data, info) -> Iterable[User]:
             await asyncio.sleep(0.0)
             return [User({})]
 
+        @staticresolver
         async def users2(data, info) -> Iterable[User]:
             await asyncio.sleep(0.0)
             return [User({})]
 
-    schema = GraphQLSchema(query=Query.graphql_type)
+    schema = GraphQLSchema(query=graphql_type(Query))
 
     t0 = time.time()
     result = asyncio.new_event_loop().run_until_complete(
