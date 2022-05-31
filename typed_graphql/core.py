@@ -34,6 +34,12 @@ class TypedGraphqlMiddlewareManager(MiddlewareManager):
             try:
                 return getattr(data, f"resolve_{camel_to_snake(info.field_name)}")(info, **args)
             except AttributeError:
+                try:
+                    resolver = getattr(data, f"{camel_to_snake(info.field_name)}")
+                    if getattr(resolver, "__is_resolver", None):
+                        return resolver(info, **args)
+                except AttributeError:
+                    pass
                 return field_resolver(data, info, **args)
         return resolve
 

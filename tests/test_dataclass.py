@@ -136,3 +136,23 @@ def test_dataclass_inheritance_passes_on_resolver_fields():
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user { value xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
     assert result.data == {'user': [{'value': 'z', 'xxx': '1'}]}
+
+
+def test_dataclass_inheritance_passes_on_resolver_fields_with_snake_case():
+    @dataclass
+    class Thing:
+        @resolver
+        def my_value(self, info) -> str:
+            return "z"
+
+    @dataclass
+    class User(Thing):
+        xxx: Optional[str] = None
+
+    class Query:
+        def resolve_user(self, info) -> List[User]:
+            return [User("1")]
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user { myValue xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    assert result.data == {'user': [{'myValue': 'z', 'xxx': '1'}]}
