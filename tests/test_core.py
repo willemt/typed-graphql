@@ -5,7 +5,13 @@ from typing import Any, Iterable, List, Optional, Tuple, TypedDict
 from graphql import graphql_sync
 from graphql.type import GraphQLField, GraphQLSchema, GraphQLString, GraphQLObjectType
 
-from typed_graphql import TypedGraphqlMiddlewareManager, graphql_type, resolver, staticresolver
+from typed_graphql import (
+    ReturnTypeMissing,
+    TypedGraphqlMiddlewareManager,
+    graphql_type,
+    resolver,
+    staticresolver,
+)
 
 
 def get(field: str, data, info) -> Optional[Any]:
@@ -222,7 +228,6 @@ def test_dataclass():
     assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    print(result.errors)
     assert result.data == {"user": [{"value": "1"}]}
     assert result.errors is None
 
@@ -421,3 +426,17 @@ def test_object_type_can_be_referenced_more_than_once():
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, '{users {value}}')
     assert result.data == {'users': [{'value': 'xxx'}]}
+
+
+def test_missing_return_type():
+    class Query:
+        @staticresolver
+        def user(data, info):
+            return "xxx"
+
+    try:
+        graphql_type(Query)
+    except ReturnTypeMissing as e:
+        assert str(e) == "user of <class 'test_core.test_missing_return_type.<locals>.Query'> is missing return type"
+    else:
+        raise Exception()

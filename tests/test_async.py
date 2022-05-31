@@ -6,7 +6,7 @@ from typing import Any, AsyncIterator, Iterable, Optional
 from graphql import graphql
 from graphql.type import GraphQLSchema
 
-from typed_graphql import graphql_type, staticresolver
+from typed_graphql import TypedGraphqlMiddlewareManager, graphql_type, staticresolver
 
 
 def get(field: str, data, info) -> Optional[Any]:
@@ -127,5 +127,60 @@ def test_multiple_async_lists_are_run_in_parallel():
         "users": [{"value": "xxx", "value2": "xxx"}],
         "users2": [{"value": "xxx", "value2": "xxx"}],
     }
+    assert result.errors is None
+
+
+def test_with_event():
+    from dataclasses import dataclass
+
+    @dataclass
+    class PageInfo:
+        has_previous_page: bool
+        has_next_page: bool
+        start_cursor: str
+        end_cursor: str
+
+    @dataclass
+    class User:
+        _nodes: AsyncIterator[str]
+
+        def __post_init__(self):
+            self.event = asyncio.Event()
+
+        async def resolve_page_info(self, info) -> PageInfo:
+            await self.event.wait()
+            return self.page_info
+
+        async def resolve_nodes(self, info) -> AsyncIterator[str]:
+            count = 0
+            async for n in self._nodes:
+                yield n
+                count += 1
+            self.page_info = PageInfo(False, True, str(count), str(0))
+            self.event.set()
+
+    async def pull():
+        yield "a"
+        yield "b"
+        yield "c"
+
+    class Query:
+        @staticresolver
+        async def user(data, info) -> User:
+            await asyncio.sleep(0.0)
+            return User(pull())
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = asyncio.new_event_loop().run_until_complete(
+        graphql(schema, "{user { pageInfo { endCursor } nodes }}", middleware=TypedGraphqlMiddlewareManager())
+    )
+    assert result.data == {'user': {'nodes': ['a', 'b', 'c'], 'pageInfo': {'endCursor': '0'}}}
+    assert result.errors is None
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = asyncio.new_event_loop().run_until_complete(
+        graphql(schema, "{user { nodes pageInfo { endCursor } }}", middleware=TypedGraphqlMiddlewareManager())
+    )
+    assert result.data == {'user': {'nodes': ['a', 'b', 'c'], 'pageInfo': {'endCursor': '0'}}}
     assert result.errors is None
 

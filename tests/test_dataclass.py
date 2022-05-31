@@ -28,7 +28,6 @@ def test_dataclass_has_auto_resolvers():
     assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    print(result.errors)
     assert result.data == {"user": [{"value": "1"}]}
     assert result.errors is None
 
@@ -45,7 +44,6 @@ def test_dataclass_has_auto_resolvers_with_snake_casing():
     assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user { myValue }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    print(result.errors)
     assert result.data == {"user": [{"myValue": "1"}]}
     assert result.errors is None
 
@@ -63,13 +61,11 @@ def test_dataclass_with_multiple_fields():
     assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user { xxx value }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    print(result.errors)
     assert result.data == {"user": [{'value': '1', 'xxx': 'abc'}]}
     assert result.errors is None
 
 
 def test_dataclass_with_decorator():
-
     @resolverclass()
     @dataclass
     class User:
@@ -102,3 +98,41 @@ def test_dataclass_can_block_resolvers():
     result = graphql_sync(schema, "{user { xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
     assert result.data is None
     assert result.errors[0].message == "Cannot query field 'xxx' on type 'User'."
+
+
+def test_dataclass_inheritance_passes_on_fields():
+    @dataclass
+    class Thing:
+        value: str
+
+    @dataclass
+    class User(Thing):
+        xxx: Optional[str] = None
+
+    class Query:
+        def resolve_user(self, info) -> List[User]:
+            return [User("1")]
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user { value xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    assert result.data == {'user': [{'value': '1', 'xxx': None}]}
+
+
+def test_dataclass_inheritance_passes_on_resolver_fields():
+    @dataclass
+    class Thing:
+        @resolver
+        def value(self, info) -> str:
+            return "z"
+
+    @dataclass
+    class User(Thing):
+        xxx: Optional[str] = None
+
+    class Query:
+        def resolve_user(self, info) -> List[User]:
+            return [User("1")]
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user { value xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    assert result.data == {'user': [{'value': 'z', 'xxx': '1'}]}

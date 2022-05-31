@@ -147,7 +147,8 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
 
     resolvers = [
         (attr_name, y)
-        for attr_name, y in cls.__dict__.items()
+        for klass in cls.__mro__
+        for attr_name, y in klass.__dict__.items()
         if is_resolver(y)
     ]
 
@@ -194,14 +195,15 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
             else:
                 resolver = attr
 
+        try:
+            graphql_ret_type = python_type_to_graphql_type(return_type)
+        except PythonToGraphQLTypeConversionException:
+            raise ReturnTypeMissing(f"{attr_name} of {cls} is missing return type")
+
         if is_staticmethod(attr):
-            field = Field(
-                python_type_to_graphql_type(return_type), args=args, resolve=resolver
-            )
+            field = Field(graphql_ret_type, args=args, resolve=resolver)
         else:
-            field = Field(
-                python_type_to_graphql_type(return_type), args=args
-            )
+            field = Field(graphql_ret_type, args=args)
 
         if attr_name.startswith("resolve_"):
             attr_name = attr_name[len("resolve_"):]
@@ -214,6 +216,10 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
 
 
 class PythonToGraphQLTypeConversionException(Exception):
+    pass
+
+
+class ReturnTypeMissing(Exception):
     pass
 
 
