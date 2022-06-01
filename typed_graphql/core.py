@@ -22,7 +22,9 @@ from graphql.type import (
     GraphQLType,
 )
 
-from typing_inspect import is_new_type
+from pytypes import get_arg_for_TypeVar
+
+from typing_inspect import is_new_type, is_typevar
 
 
 RESERVED_ARGUMENT_NAMES = set(["data", "info", "return"])
@@ -32,7 +34,9 @@ class TypedGraphqlMiddlewareManager(MiddlewareManager):
     def get_field_resolver(self, field_resolver):
         def resolve(data, info, **args):
             try:
-                return getattr(data, f"resolve_{camel_to_snake(info.field_name)}")(info, **args)
+                return getattr(data, f"resolve_{camel_to_snake(info.field_name)}")(
+                    info, **args
+                )
             except AttributeError:
                 try:
                     resolver = getattr(data, f"{camel_to_snake(info.field_name)}")
@@ -41,6 +45,7 @@ class TypedGraphqlMiddlewareManager(MiddlewareManager):
                 except AttributeError:
                     pass
                 return field_resolver(data, info, **args)
+
         return resolve
 
 
@@ -48,9 +53,11 @@ def resolver(f):
     """
     This method is a resolver
     """
+
     @wraps(f)
     def wrapper(*args, **kwargs):
         return f(*args, **kwargs)
+
     wrapper.__is_resolver = True
     return wrapper
 
@@ -60,9 +67,11 @@ def staticresolver(f):
     This method is a resolver
     We also automatically decorate it as a staticmethod
     """
+
     @wraps(f)
     def wrapper(*args, **kwargs):
         return f(*args, **kwargs)
+
     wrapper.__is_resolver = True
     return staticmethod(wrapper)
 
@@ -83,7 +92,7 @@ def graphql_input_type(cls):
         if attr_name.startswith("_"):
             continue
 
-        field = InputField(python_type_to_graphql_type(attr, input_field=True))
+        field = InputField(python_type_to_graphql_type(cls, attr, input_field=True))
         field_name = snake_to_camel(attr_name, upper=False)
         fields[field_name] = field
 
@@ -139,16 +148,14 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
     # Though an explicit resolver function always takes precedence
     if is_dataclass(cls):
         for f in dataclass_fields(cls):
-            if f.name in (getattr(cls, '_resolver_blocklist', None) or []):
+            if f.name in (getattr(cls, "_resolver_blocklist", None) or []):
                 continue
             field_name = snake_to_camel(f.name, upper=False)
 
             def resolver(data, info):
                 return getattr(data, camel_to_snake(info.field_name), None)
 
-            field = Field(
-                python_type_to_graphql_type(f.type), resolve=resolver
-            )
+            field = Field(python_type_to_graphql_type(cls, f.type), resolve=resolver)
             fields[field_name] = field
 
     resolvers = [
@@ -174,7 +181,7 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
 
         args = {
             snake_to_camel(param_name, upper=False): GraphQLArgument(
-                python_type_to_graphql_type(param.annotation, input_field=True)
+                python_type_to_graphql_type(cls, param.annotation, input_field=True)
             )
             for param_name, param in params[arg_offset:]
         }
@@ -202,7 +209,7 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
                 resolver = attr
 
         try:
-            graphql_ret_type = python_type_to_graphql_type(return_type)
+            graphql_ret_type = python_type_to_graphql_type(cls, return_type)
         except PythonToGraphQLTypeConversionException:
             raise ReturnTypeMissing(f"{attr_name} of {cls} is missing return type")
 
@@ -212,7 +219,7 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
             field = Field(graphql_ret_type, args=args)
 
         if attr_name.startswith("resolve_"):
-            attr_name = attr_name[len("resolve_"):]
+            attr_name = attr_name[len("resolve_") :]
 
         field_name = snake_to_camel(attr_name, upper=False)
         fields[field_name] = field
@@ -229,46 +236,50 @@ class ReturnTypeMissing(Exception):
     pass
 
 
-def python_type_to_graphql_type(t, nonnull=True, input_field=False):
+def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
     if str(t).startswith("typing.AsyncIterator"):
         assert len(t.__args__) == 1
-        _t = GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
+        _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True))
         if nonnull:
             return GraphQLNonNull(_t)
         return _t
     if str(t).startswith("typing.Iterable"):
         assert len(t.__args__) == 1
-        _t = GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
+        _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True))
         if nonnull:
             return GraphQLNonNull(_t)
         return _t
     elif str(t).startswith("typing.List"):
         assert len(t.__args__) == 1
-        _t = GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
+        _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True))
         if nonnull:
             return GraphQLNonNull(_t)
         return _t
     elif str(t).startswith("typing.Tuple"):
         if not len(set(t.__args__)) == 1:
             raise Exception("tuples must have the same type for all members")
-        _t = GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
+        _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True))
         if nonnull:
             return GraphQLNonNull(_t)
         return _t
     if str(t).startswith("graphql.type.definition.GraphQLList"):
         assert len(t.__args__) == 1
-        return GraphQLList(python_type_to_graphql_type(t.__args__[0], nonnull=True))
+        return GraphQLList(
+            python_type_to_graphql_type(cls, t.__args__[0], nonnull=True)
+        )
     elif str(t).startswith("typing.Union") or str(t).startswith("typing.Optional"):
         if len(t.__args__) == 2:
             if issubclass(t.__args__[1], type(None)):
-                return python_type_to_graphql_type(t.__args__[0], nonnull=False)
+                return python_type_to_graphql_type(cls, t.__args__[0], nonnull=False)
             else:
                 raise Exception
         else:
             raise Exception
 
     elif is_new_type(t):
-        return python_type_to_graphql_type(t.__supertype__, input_field=input_field)
+        return python_type_to_graphql_type(
+            cls, t.__supertype__, input_field=input_field
+        )
 
     elif is_dataclass(t):
         _t = graphql_type(t, input_field=input_field)
@@ -281,7 +292,13 @@ def python_type_to_graphql_type(t, nonnull=True, input_field=False):
             return GraphQLNonNull(t)
         return t
 
+    elif is_typevar(t):
+        return python_type_to_graphql_type(
+            cls, get_arg_for_TypeVar(t, cls), nonnull=nonnull, input_field=input_field
+        )
+
     else:
+
         try:
             if issubclass(t, str):
                 if nonnull:
@@ -301,10 +318,7 @@ def python_type_to_graphql_type(t, nonnull=True, input_field=False):
                 return Float
             elif issubclass(t, enum.Enum):
                 if not hasattr(t, "_graphql_type"):
-                    t._graphql_type = GraphQLEnumType(
-                        t.__name__,
-                        dict(t.__members__)
-                    )
+                    t._graphql_type = GraphQLEnumType(t.__name__, dict(t.__members__))
                 if nonnull:
                     return GraphQLNonNull(t._graphql_type)
                 return t._graphql_type

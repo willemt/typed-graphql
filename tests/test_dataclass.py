@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Iterable, List, Optional, Tuple, TypedDict
+from typing import Any, Generic, Iterable, List, Optional, Tuple, TypedDict, TypeVar
 
 from graphql import graphql_sync
 from graphql.type import GraphQLField, GraphQLSchema, GraphQLString, GraphQLObjectType
@@ -153,6 +153,52 @@ def test_dataclass_inheritance_passes_on_resolver_fields_with_snake_case():
         def resolve_user(self, info) -> List[User]:
             return [User("1")]
 
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user { myValue xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    assert result.data == {'user': [{'myValue': 'z', 'xxx': '1'}]}
+
+
+def test_generic():
+    X = TypeVar('X')
+
+    @dataclass
+    class Paged(Generic[X]):
+        @resolver
+        def my_value(self, info) -> X:
+            return "z"
+
+    @dataclass
+    class User(Paged[str]):
+        xxx: Optional[str] = None
+
+    class Query:
+        def resolve_user(self, info) -> List[User]:
+            return [User("1")]
+
+    assert str(graphql_type(User).fields["myValue"].type) == 'String!'
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user { myValue xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    assert result.data == {'user': [{'myValue': 'z', 'xxx': '1'}]}
+
+
+def test_optional_generic():
+    X = TypeVar('X')
+
+    @dataclass
+    class Paged(Generic[X]):
+        @resolver
+        def my_value(self, info) -> Optional[X]:
+            return "z"
+
+    @dataclass
+    class User(Paged[str]):
+        xxx: Optional[str] = None
+
+    class Query:
+        def resolve_user(self, info) -> List[User]:
+            return [User("1")]
+
+    assert str(graphql_type(User).fields["myValue"].type) == 'String'
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user { myValue xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
     assert result.data == {'user': [{'myValue': 'z', 'xxx': '1'}]}
