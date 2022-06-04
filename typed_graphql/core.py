@@ -2,7 +2,9 @@ import enum
 import inspect
 from dataclasses import fields as dataclass_fields, is_dataclass
 from functools import partial, wraps
-from typing import Any, Callable, List, Optional, TypeVar
+from typing import Any, Callable, List, Optional
+
+import docstring_parser
 
 from graphql.execution import MiddlewareManager
 from graphql.pyutils import camel_to_snake, snake_to_camel
@@ -147,6 +149,12 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
     # It's a dataclass so let's auto expose the fields
     # Though an explicit resolver function always takes precedence
     if is_dataclass(cls):
+
+        # Obtain docstring
+        docstring = cls.__doc__
+        parsed_docstring = docstring_parser.parse(docstring)
+        arg_name_to_doc = {x.arg_name: x.description for x in parsed_docstring.params}
+
         for f in dataclass_fields(cls):
             if f.name in (getattr(cls, "_resolver_blocklist", None) or []):
                 continue
@@ -155,7 +163,11 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
             def resolver(data, info):
                 return getattr(data, camel_to_snake(info.field_name), None)
 
-            field = Field(python_type_to_graphql_type(cls, f.type), resolve=resolver)
+            field = Field(
+                python_type_to_graphql_type(cls, f.type),
+                resolve=resolver,
+                description=arg_name_to_doc.get(f.name),
+            )
             fields[field_name] = field
 
     resolvers = [
@@ -179,9 +191,19 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
             "_" in param_name for param_name, param in params[arg_offset:]
         )
 
+        # Obtain docstring
+        if is_staticmethod(attr):
+            docstring = attr.__func__.__doc__
+        else:
+            docstring = attr.__doc__
+
+        parsed_docstring = docstring_parser.parse(docstring)
+        arg_name_to_doc = {x.arg_name: x.description for x in parsed_docstring.params}
+
         args = {
             snake_to_camel(param_name, upper=False): GraphQLArgument(
-                python_type_to_graphql_type(cls, param.annotation, input_field=True)
+                python_type_to_graphql_type(cls, param.annotation, input_field=True),
+                description=arg_name_to_doc.get(param_name, ""),
             )
             for param_name, param in params[arg_offset:]
         }
@@ -224,7 +246,9 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
         field_name = snake_to_camel(attr_name, upper=False)
         fields[field_name] = field
 
-    cls._graphql_type = GraphQLObjectType(cls.__name__, fields)
+    docstring = cls.__doc__
+    parsed_docstring = docstring_parser.parse(docstring)
+    cls._graphql_type = GraphQLObjectType(cls.__name__, fields, description=parsed_docstring.short_description)
     return cls._graphql_type
 
 
