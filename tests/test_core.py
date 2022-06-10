@@ -69,6 +69,28 @@ def test_resolve_prefix_with_object_with_data():
     assert result.errors is None
 
 
+def test_resolve_with_snake_case_argument():
+    class Query(dict):
+        def resolve_user(self, info, key_word: str = "") -> str:
+            return key_word
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, '{user(keyWord: "111")}', Query(x=1), middleware=TypedGraphqlMiddlewareManager())
+    assert result.data == {"user": "111"}
+    assert result.errors is None
+
+
+def test_resolve_with_positional_argument():
+    class Query(dict):
+        def resolve_user(self, info, key_word: str) -> str:
+            return key_word
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, '{user(keyWord: "111")}', Query(x=1), middleware=TypedGraphqlMiddlewareManager())
+    assert result.data == {"user": "111"}
+    assert result.errors is None
+
+
 def test_resolve_prefix_with_long_name_object_with_data():
     class Query(dict):
         def resolve_my_user(self, info) -> str:

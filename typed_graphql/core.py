@@ -35,6 +35,7 @@ RESERVED_ARGUMENT_NAMES = set(["data", "info", "return"])
 class TypedGraphqlMiddlewareManager(MiddlewareManager):
     def get_field_resolver(self, field_resolver):
         def resolve(data, info, **args):
+            args = {camel_to_snake(k): v for k, v in args.items()}
             try:
                 return getattr(data, f"resolve_{camel_to_snake(info.field_name)}")(
                     info, **args
