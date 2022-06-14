@@ -303,7 +303,7 @@ def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
 
     elif is_new_type(t):
         return python_type_to_graphql_type(
-            cls, t.__supertype__, input_field=input_field
+            cls, t.__supertype__, input_field=input_field, nonnull=nonnull,
         )
 
     elif is_dataclass(t):
