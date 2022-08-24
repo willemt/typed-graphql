@@ -2,7 +2,7 @@ import enum
 import inspect
 from dataclasses import fields as dataclass_fields, is_dataclass
 from functools import partial, wraps
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, TypeVar
 
 import docstring_parser
 
@@ -26,7 +26,7 @@ from graphql.type import (
 
 from pytypes import get_arg_for_TypeVar
 
-from typing_inspect import is_new_type, is_typevar
+from typing_inspect import is_new_type, is_optional_type, is_typevar
 
 
 RESERVED_ARGUMENT_NAMES = set(["data", "info", "return"])
@@ -292,7 +292,7 @@ def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
         return GraphQLList(
             python_type_to_graphql_type(cls, t.__args__[0], nonnull=True)
         )
-    elif str(t).startswith("typing.Union") or str(t).startswith("typing.Optional"):
+    elif is_optional_type(t):
         if len(t.__args__) == 2:
             if issubclass(t.__args__[1], type(None)):
                 return python_type_to_graphql_type(cls, t.__args__[0], nonnull=False)
@@ -349,6 +349,15 @@ def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
                 return t._graphql_type
 
             elif issubclass(t, dict):
+                if nonnull:
+                    return GraphQLNonNull(graphql_type(t, input_field=input_field))
+                return graphql_type(t, input_field=input_field)
+
+            elif issubclass(t, inspect._empty):
+                raise PythonToGraphQLTypeConversionException(t)
+
+            # A simple class
+            elif issubclass(t, object):
                 if nonnull:
                     return GraphQLNonNull(graphql_type(t, input_field=input_field))
                 return graphql_type(t, input_field=input_field)
