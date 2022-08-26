@@ -17,6 +17,21 @@ def strict_get(field: str, data, info) -> Any:
     return data[field]
 
 
+def test_async_snake_case():
+    class Query:
+        async def resolve_my_user(self, info) -> Iterable[str]:
+            await asyncio.sleep(0.0)
+            return iter(["abc", "def"])
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = asyncio.new_event_loop().run_until_complete(
+        graphql(schema, "{myUser}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    )
+    print(result.errors)
+    assert result.data == {"myUser": ["abc", "def"]}
+    assert result.errors is None
+
+
 def test_async_string_list():
     class Query:
         @staticresolver

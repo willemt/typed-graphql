@@ -56,3 +56,29 @@ def test_enum():
     x = graphql_input_type(UserInput)
     assert x.fields.keys() == {"name", "usertype"}
     assert str(x.fields["usertype"].type) == "MyEnum!"
+
+
+def test_list_of_typeddicts():
+    class KeyInput(TypedDict):
+        key: str
+        value: str
+
+    class UserInput(TypedDict):
+        attrs: List[KeyInput]
+
+    x = graphql_input_type(UserInput)
+    assert x.fields.keys() == {"attrs"}
+    assert str(x.fields["attrs"].type) == "[KeyInput!]!"
+
+
+def test_optional_typeddict():
+    class KeyInput(TypedDict):
+        key: str
+        value: str
+
+    class UserInput(TypedDict):
+        attrs: Optional[KeyInput]
+
+    x = graphql_input_type(UserInput)
+    assert x.fields.keys() == {"attrs"}
+    assert str(x.fields["attrs"].type) == "KeyInput"

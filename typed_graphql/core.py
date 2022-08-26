@@ -2,7 +2,7 @@ import enum
 import inspect
 from dataclasses import fields as dataclass_fields, is_dataclass
 from functools import partial, wraps
-from typing import Any, Callable, List, Optional, TypeVar
+from typing import List, Optional
 
 import docstring_parser
 
@@ -24,7 +24,7 @@ from graphql.type import (
     GraphQLType,
 )
 
-from pytypes import get_arg_for_TypeVar
+from typed_graphql.util import get_arg_for_typevar
 
 from typing_inspect import is_new_type, is_optional_type, is_typevar
 
@@ -276,14 +276,14 @@ def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
         return _t
     elif str(t).startswith("typing.List"):
         assert len(t.__args__) == 1
-        _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True))
+        _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True, input_field=input_field))
         if nonnull:
             return GraphQLNonNull(_t)
         return _t
     elif str(t).startswith("typing.Tuple"):
         if not len(set(t.__args__)) == 1:
             raise Exception("tuples must have the same type for all members")
-        _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True))
+        _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True, input_field=input_field))
         if nonnull:
             return GraphQLNonNull(_t)
         return _t
@@ -295,7 +295,7 @@ def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
     elif is_optional_type(t):
         if len(t.__args__) == 2:
             if issubclass(t.__args__[1], type(None)):
-                return python_type_to_graphql_type(cls, t.__args__[0], nonnull=False)
+                return python_type_to_graphql_type(cls, t.__args__[0], nonnull=False, input_field=input_field)
             else:
                 raise Exception
         else:
@@ -318,8 +318,9 @@ def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
         return t
 
     elif is_typevar(t):
+        t = get_arg_for_typevar(t, cls)
         return python_type_to_graphql_type(
-            cls, get_arg_for_TypeVar(t, cls), nonnull=nonnull, input_field=input_field
+            cls, t, nonnull=nonnull, input_field=input_field
         )
 
     else:

@@ -126,3 +126,22 @@ def test_mutation_with_enum_input_object():
     }
     """)
     assert result.data == {"createUser": {"colour": "RED"}}
+
+
+def test_list_of_input_types():
+    class MyInput(TypedDict):
+        my_input_items: List[str]
+        activated: bool
+
+    class Query:
+        @staticresolver
+        async def user(data, info) -> str:
+            return "abc"
+
+    class Mutation:
+        @staticresolver
+        async def save_user(data, info, x: List[MyInput]) -> str:
+            return "abc"
+
+    # There's no exception raised
+    graphql_type(Mutation)

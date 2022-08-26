@@ -317,7 +317,7 @@ def test_optional_argument_needs_default():
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user}")
     assert result.data is None
-    assert str(result.errors[0]).startswith("user() missing 1 required positional argument: 'add'")
+    assert "user() missing 1 required positional argument: 'add'" in str(result.errors[0])
 
 
 def test_mutation():

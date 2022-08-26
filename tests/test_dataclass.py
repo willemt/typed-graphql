@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Generic, Iterable, List, Optional, Tuple, TypedDict, TypeVar
+from typing import Any, Generic, Iterable, List, Optional, Tuple, TypedDict, TypeVar, cast
 
 from graphql import graphql_sync
 from graphql.type import GraphQLField, GraphQLSchema, GraphQLString, GraphQLObjectType
@@ -165,7 +165,7 @@ def test_generic():
     class Paged(Generic[X]):
         @resolver
         def my_value(self, info) -> X:
-            return "z"
+            return cast(X, "z")
 
     @dataclass
     class User(Paged[str]):
