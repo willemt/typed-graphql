@@ -2,7 +2,7 @@ import enum
 import inspect
 from dataclasses import fields as dataclass_fields, is_dataclass
 from functools import partial, wraps
-from typing import List, Optional
+from typing import Any, Callable, List, Optional, TypeVar, cast
 
 import docstring_parser
 
@@ -52,7 +52,10 @@ class TypedGraphqlMiddlewareManager(MiddlewareManager):
         return resolve
 
 
-def resolver(f):
+F = TypeVar('F', bound=Callable[..., Any])
+
+
+def resolver(f: F) -> F:
     """
     This method is a resolver
     """
@@ -61,11 +64,11 @@ def resolver(f):
     def wrapper(*args, **kwargs):
         return f(*args, **kwargs)
 
-    wrapper.__is_resolver = True
-    return wrapper
+    wrapper.__is_resolver = True  # type: ignore
+    return cast(F, wrapper)
 
 
-def staticresolver(f):
+def staticresolver(f: F) -> F:
     """
     This method is a resolver
     We also automatically decorate it as a staticmethod
@@ -75,8 +78,8 @@ def staticresolver(f):
     def wrapper(*args, **kwargs):
         return f(*args, **kwargs)
 
-    wrapper.__is_resolver = True
-    return staticmethod(wrapper)
+    wrapper.__is_resolver = True  # type: ignore
+    return cast(F, staticmethod(wrapper))
 
 
 def graphql_input_type(cls):
