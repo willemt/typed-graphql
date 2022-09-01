@@ -23,12 +23,14 @@ async def execute_async(
     query: str,
     root: Any = None,
     context_value: Optional[Dict[str, Any]] = None,
+    variable_values: Optional[Dict[str, Any]] = None,
 ):
     result = await graphql(
         schema,
         query,
         root,
         context_value=context_value,
+        variable_values=variable_values,
         middleware=TypedGraphqlMiddlewareManager(),
     )
     result.data = await await_awaitables(result.data)
