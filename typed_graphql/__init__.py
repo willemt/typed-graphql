@@ -7,10 +7,12 @@ from .core import (
     resolverclass,
     staticresolver,
 )
+from .execute import execute_async
 
 __all__ = [
     "ReturnTypeMissing",
     "TypedGraphqlMiddlewareManager",
+    "execute_async",
     "graphql_input_type",
     "graphql_type",
     "resolver",

@@ -5,8 +5,9 @@ from typing import Any, AsyncIterator, Iterable, Optional
 
 from graphql import graphql
 from graphql.type import GraphQLSchema
+from graphql.pyutils import is_awaitable
 
-from typed_graphql import TypedGraphqlMiddlewareManager, graphql_type, staticresolver
+from typed_graphql import TypedGraphqlMiddlewareManager, execute_async, graphql_type, staticresolver
 
 
 def get(field: str, data, info) -> Optional[Any]:
@@ -27,7 +28,6 @@ def test_async_snake_case():
     result = asyncio.new_event_loop().run_until_complete(
         graphql(schema, "{myUser}", Query(), middleware=TypedGraphqlMiddlewareManager())
     )
-    print(result.errors)
     assert result.data == {"myUser": ["abc", "def"]}
     assert result.errors is None
 
@@ -76,7 +76,6 @@ def test_async_iterator():
 
     schema = GraphQLSchema(query=graphql_type(Query))
     result = asyncio.new_event_loop().run_until_complete(graphql(schema, "{user}"))
-    print(result.errors)
     assert result.data == {"user": ["abc", "def"]}
     assert result.errors is None
 
@@ -192,10 +191,52 @@ def test_with_event():
     assert result.data == {'user': {'nodes': ['a', 'b', 'c'], 'pageInfo': {'endCursor': '0'}}}
     assert result.errors is None
 
+    # schema = GraphQLSchema(query=graphql_type(Query))
+    # result = asyncio.new_event_loop().run_until_complete(
+    #     graphql(schema, "{user { nodes pageInfo { endCursor } }}", middleware=TypedGraphqlMiddlewareManager())
+    # )
+    # assert result.data == {'user': {'nodes': ['a', 'b', 'c'], 'pageInfo': {'endCursor': '0'}}}
+    # assert result.errors is None
+
+
+def test_nested_async():
+    class User(dict):
+        async def resolve_value(self, info) -> str:
+            await asyncio.sleep(1.0)
+            return "xxx"
+
+    class Query:
+        async def resolve_my_user(self, info) -> User:
+            await asyncio.sleep(0.0)
+            return User()
+
     schema = GraphQLSchema(query=graphql_type(Query))
     result = asyncio.new_event_loop().run_until_complete(
-        graphql(schema, "{user { nodes pageInfo { endCursor } }}", middleware=TypedGraphqlMiddlewareManager())
+        graphql(schema, "{myUser {value}}", Query(), middleware=TypedGraphqlMiddlewareManager())
     )
-    assert result.data == {'user': {'nodes': ['a', 'b', 'c'], 'pageInfo': {'endCursor': '0'}}}
+    assert result.data == {"myUser": {"value": "xxx"}}
     assert result.errors is None
 
+
+def test_nested_async_iterators():
+    class User2(dict):
+        async def resolve_value(self, info) -> str:
+            await asyncio.sleep(1.0)
+            return "yyy"
+
+    class User(dict):
+        async def resolve_value(self, info) -> AsyncIterator[User2]:
+            await asyncio.sleep(1.0)
+            yield User2()
+
+    class Query:
+        async def resolve_my_user(self, info) -> AsyncIterator[User]:
+            await asyncio.sleep(0.0)
+            yield User()
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = asyncio.new_event_loop().run_until_complete(
+        execute_async(schema, "{myUser {value {value}}}", Query())
+    )
+    assert result.data == {'myUser': [{'value': [{'value': 'yyy'}]}]}
+    assert result.errors is None
