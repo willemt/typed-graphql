@@ -31,11 +31,18 @@ from typing_inspect import is_new_type, is_optional_type, is_typevar
 
 RESERVED_ARGUMENT_NAMES = set(["data", "info", "return"])
 
+IMMUTABLE_ARGUMENT_NAMES = set(["includeDeprecated"])
+"""These arguments should not be snakecased"""
+
 
 class TypedGraphqlMiddlewareManager(MiddlewareManager):
     def get_field_resolver(self, field_resolver):
         def resolve(data, info, **args):
-            args = {camel_to_snake(k): v for k, v in args.items()}
+            args = {
+                camel_to_snake(k): v
+                for k, v in args.items()
+                if k not in IMMUTABLE_ARGUMENT_NAMES
+            }
             try:
                 return getattr(data, f"resolve_{camel_to_snake(info.field_name)}")(
                     info, **args
