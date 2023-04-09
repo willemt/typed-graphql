@@ -2,7 +2,7 @@ import enum
 import inspect
 from dataclasses import fields as dataclass_fields, is_dataclass
 from functools import partial, wraps
-from typing import Any, Callable, List, Optional, TypeVar, cast
+from typing import Annotated, Any, Callable, List, Optional, TypeVar, cast, get_args, get_origin
 
 import docstring_parser
 
@@ -271,6 +271,10 @@ class ReturnTypeMissing(Exception):
     pass
 
 
+def is_annotated(cls) -> bool:
+    return get_origin(cls) is Annotated
+
+
 def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
     if str(t).startswith("typing.AsyncIterator"):
         assert len(t.__args__) == 1
@@ -302,6 +306,15 @@ def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
         return GraphQLList(
             python_type_to_graphql_type(cls, t.__args__[0], nonnull=True)
         )
+    elif is_annotated(t):
+        # if a GraphQLType is in the annotation, we use that as an override
+        for annotated_type in get_args(t):
+            if issubclass(annotated_type, GraphQLType):
+                return annotated_type()
+
+        # otherwise we try to use the first type
+        return python_type_to_graphql_type(cls, get_args(t)[0], nonnull=nonnull, input_field=input_field)
+
     elif is_optional_type(t):
         if len(t.__args__) == 2:
             if issubclass(t.__args__[1], type(None)):
