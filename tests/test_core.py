@@ -462,3 +462,21 @@ def test_missing_return_type():
         assert str(e) == "user of <class 'test_core.test_missing_return_type.<locals>.Query'> is missing return type"
     else:
         raise Exception()
+
+
+def test_nested():
+    class Nested:
+        @staticresolver
+        def user(data, info, x: int) -> int:
+            return 1
+
+    class Query:
+        @staticresolver
+        def nested(data, info) -> Nested:
+            return Nested()
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{nested {user(x: 1)}}")
+    assert result.data == {"nested": {"user": 1}}
+    assert result.errors is None
+

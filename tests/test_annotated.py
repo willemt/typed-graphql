@@ -4,7 +4,7 @@ from typing import Annotated, Any, Optional
 from graphql import GraphQLScalarType, GraphQLError, graphql
 from graphql.type import GraphQLSchema
 
-from typed_graphql import TypedGraphqlMiddlewareManager, graphql_type
+from typed_graphql import TypedGraphqlMiddlewareManager, TypeUnrepresentableAsGraphql, graphql_type
 
 
 def get(field: str, data, info) -> Optional[Any]:
@@ -84,3 +84,16 @@ def test_annotated_type_uses_validation_without_middleware():
     # FIXME: there should be errors here?
     assert result.errors is None
     assert result.data == {"myUser": None}
+
+
+def test_map_return_type_is_invalid():
+    class Query:
+        def resolve_my_user(self, info) -> map:
+            return ""
+
+    try:
+        schema = GraphQLSchema(query=graphql_type(Query))
+    except TypeUnrepresentableAsGraphql as e:
+        assert e.args[0] == "Return type <class 'map'> for resolve_my_user can not be converted to a GraphQL type"
+    else:
+        raise Exception
