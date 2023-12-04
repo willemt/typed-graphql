@@ -300,7 +300,13 @@ def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
         if nonnull:
             return GraphQLNonNull(_t)
         return _t
-    if str(t).startswith("typing.Iterable"):
+    elif str(t).startswith("typing.Iterable"):
+        assert len(t.__args__) == 1
+        _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True))
+        if nonnull:
+            return GraphQLNonNull(_t)
+        return _t
+    elif str(t).startswith("typing.Iterator"):
         assert len(t.__args__) == 1
         _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True))
         if nonnull:

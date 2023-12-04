@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Iterator, Optional
 
 from graphql import graphql_sync
 from graphql.type import GraphQLSchema
@@ -18,6 +18,18 @@ def test_string_list():
     class Query:
         @staticresolver
         def user(data, info) -> Iterable[str]:
+            yield from iter(["abc", "def"])
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user}")
+    assert result.data == {"user": ["abc", "def"]}
+    assert result.errors is None
+
+
+def test_string_iterator():
+    class Query:
+        @staticresolver
+        def user(data, info) -> Iterator[str]:
             yield from iter(["abc", "def"])
 
     schema = GraphQLSchema(query=graphql_type(Query))
