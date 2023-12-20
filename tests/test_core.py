@@ -207,6 +207,20 @@ def test_string_list():
     assert result.errors is None
 
 
+def test_string_list_py3_9():
+    class Query:
+        @staticresolver
+        def user(data, info) -> list[str]:
+            return ["abc", "def"]
+
+    assert str(graphql_type(Query).fields["user"].type) == '[String!]!'
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user}")
+    assert result.data == {"user": ["abc", "def"]}
+    assert result.errors is None
+
+
 def test_optional_string_list():
     class Query:
         @staticresolver

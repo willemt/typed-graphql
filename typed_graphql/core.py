@@ -2,7 +2,7 @@ import enum
 import inspect
 from dataclasses import fields as dataclass_fields, is_dataclass
 from functools import partial, wraps
-from typing import Annotated, Any, Callable, List, Optional, TypeVar, cast, get_args, get_origin
+from typing import Annotated, Any, Callable, GenericAlias, List, Optional, TypeVar, cast, get_args, get_origin
 
 import docstring_parser
 
@@ -294,7 +294,16 @@ def is_annotated(cls) -> bool:
 
 
 def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
-    if str(t).startswith("typing.AsyncIterator"):
+
+    if type(t) is GenericAlias:
+        if get_origin(t) is list:
+            assert len(t.__args__) == 1
+            _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True))
+            if nonnull:
+                return GraphQLNonNull(_t)
+            return _t
+
+    elif str(t).startswith("typing.AsyncIterator"):
         assert len(t.__args__) == 1
         _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True))
         if nonnull:
