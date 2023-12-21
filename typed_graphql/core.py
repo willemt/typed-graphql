@@ -2,7 +2,19 @@ import enum
 import inspect
 from dataclasses import fields as dataclass_fields, is_dataclass
 from functools import partial, wraps
-from typing import Annotated, Any, Callable, GenericAlias, List, Optional, TypeVar, cast, get_args, get_origin
+from types import NoneType, UnionType
+from typing import (
+    Annotated,
+    Any,
+    Callable,
+    GenericAlias,
+    List,
+    Optional,
+    TypeVar,
+    cast,
+    get_args,
+    get_origin,
+)
 
 import docstring_parser
 
@@ -302,6 +314,12 @@ def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
             if nonnull:
                 return GraphQLNonNull(_t)
             return _t
+
+    elif type(t) is UnionType:
+        args = get_args(t)
+        if 2 < len(args) or args[1] is not NoneType:
+            raise Exception("union that is not equivalent to Optional is not supported")
+        return python_type_to_graphql_type(cls, args[0], nonnull=False, input_field=input_field)
 
     elif str(t).startswith("typing.AsyncIterator"):
         assert len(t.__args__) == 1

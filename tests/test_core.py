@@ -193,6 +193,19 @@ def test_optional_str():
     assert str(graphql_type(Query).fields["user"].type) == 'String!'
 
 
+def test_optional_str_py_3_10():
+    class Query:
+        @staticresolver
+        def user(data, info, x: str | None = None) -> str:
+            return "a string!"
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user}")
+    assert result.data == {"user": "a string!"}
+    assert result.errors is None
+    assert str(graphql_type(Query).fields["user"].type) == 'String!'
+
+
 def test_string_list():
     class Query:
         @staticresolver
