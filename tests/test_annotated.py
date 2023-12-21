@@ -91,9 +91,9 @@ def test_map_return_type_is_invalid():
         def resolve_my_user(self, info) -> map:
             return ""
 
-    try:
-        schema = GraphQLSchema(query=graphql_type(Query))
-    except TypeUnrepresentableAsGraphql as e:
-        assert e.args[0] == "Return type <class 'map'> for resolve_my_user can not be converted to a GraphQL type"
-    else:
-        raise Exception
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = asyncio.new_event_loop().run_until_complete(
+        graphql(schema, "{myUser}", Query())
+    )
+    # FIXME: there should be errors here?
+    assert result.errors[0].message == "Type map must define one or more fields."

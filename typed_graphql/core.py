@@ -1,8 +1,8 @@
 import enum
 import inspect
+import sys
 from dataclasses import fields as dataclass_fields, is_dataclass
 from functools import partial, wraps
-from types import NoneType, UnionType
 from typing import (
     Annotated,
     Any,
@@ -40,6 +40,11 @@ from typed_graphql.util import get_arg_for_typevar
 
 from typing_inspect import is_new_type, is_optional_type, is_typevar
 
+if sys.version_info >= (3, 10):
+    from types import NoneType, UnionType
+else:
+    NoneType = type(None)
+    UnionType = None
 
 RESERVED_ARGUMENT_NAMES = set(["data", "info", "return"])
 
@@ -277,10 +282,19 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
 
     docstring = cls.__doc__
     parsed_docstring = docstring_parser.parse(docstring)
+
     try:
-        cls._graphql_type = GraphQLObjectType(cls.__name__, fields, description=parsed_docstring.short_description)
+        graphql_type = GraphQLObjectType(
+            cls.__name__, fields, description=parsed_docstring.short_description
+        )
     except TypeError as e:
         raise TypeUnrepresentableAsGraphql(cls.__name__, e)
+
+    # Some types are immutable
+    try:
+        cls._graphql_type = graphql_type
+    except TypeError:
+        return graphql_type
 
     return cls._graphql_type
 
@@ -315,7 +329,7 @@ def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
                 return GraphQLNonNull(_t)
             return _t
 
-    elif type(t) is UnionType:
+    elif UnionType is not None and type(t) is UnionType:
         args = get_args(t)
         if 2 < len(args) or args[1] is not NoneType:
             raise Exception("union that is not equivalent to Optional is not supported")

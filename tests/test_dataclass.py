@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from functools import wraps
 from typing import Any, Generic, Iterable, List, Optional, Tuple, TypedDict, TypeVar, cast
 
@@ -202,3 +203,20 @@ def test_optional_generic():
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user { myValue xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
     assert result.data == {'user': [{'myValue': 'z', 'xxx': '1'}]}
+
+
+def test_dataclass_prefers_resolvers_first():
+    @dataclass
+    class User:
+        value: datetime
+
+        def resolve_value(self, info) -> str:
+            return "xxx"
+
+    class Query:
+        def resolve_user(self, info) -> List[User]:
+            return [User("1")]
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    assert result.data == {'user': [{'value': 'xxx'}]}
