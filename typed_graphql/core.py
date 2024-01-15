@@ -374,8 +374,13 @@ def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
     elif is_annotated(t):
         # if a GraphQLType is in the annotation, we use that as an override
         for annotated_type in get_args(t):
-            if issubclass(annotated_type, GraphQLType):
-                return annotated_type()
+            try:
+                is_graphqltype = issubclass(annotated_type, GraphQLType)
+            except TypeError:
+                pass
+            else:
+                if is_graphqltype:
+                    return annotated_type()
 
         # otherwise we try to use the first type
         return python_type_to_graphql_type(cls, get_args(t)[0], nonnull=nonnull, input_field=input_field)

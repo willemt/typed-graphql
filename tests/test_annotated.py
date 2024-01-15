@@ -97,3 +97,20 @@ def test_map_return_type_is_invalid():
     )
     # FIXME: there should be errors here?
     assert result.errors[0].message == "Type map must define one or more fields."
+
+
+class Arbitrary:
+    ...
+
+
+def test_annotated_class_instance():
+    class Query:
+        def resolve_my_user(self, info) -> Annotated[str, Arbitrary()]:
+            return "data"
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = asyncio.new_event_loop().run_until_complete(
+        graphql(schema, "{myUser}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    )
+    assert result.errors is None
+    assert result.data == {"myUser": "data"}
