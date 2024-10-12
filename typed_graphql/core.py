@@ -3,18 +3,16 @@ import inspect
 import sys
 from dataclasses import fields as dataclass_fields, is_dataclass
 from functools import partial, wraps
-from typing import (
-    Annotated,
-    Any,
-    Callable,
-    GenericAlias,
-    List,
-    Optional,
-    TypeVar,
-    cast,
-    get_args,
-    get_origin,
-)
+from typing import Annotated
+from typing import Any
+from typing import Callable
+from typing import GenericAlias
+from typing import List
+from typing import Optional
+from typing import TypeVar
+from typing import cast
+from typing import get_args
+from typing import get_origin
 
 import docstring_parser
 
@@ -322,7 +320,8 @@ def is_annotated(cls) -> bool:
 def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
 
     if type(t) is GenericAlias:
-        if get_origin(t) is list:
+        origin = get_origin(t)
+        if origin is list or origin is set:
             assert len(t.__args__) == 1
             _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True))
             if nonnull:
@@ -354,6 +353,12 @@ def python_type_to_graphql_type(cls, t, nonnull=True, input_field=False):
             return GraphQLNonNull(_t)
         return _t
     elif str(t).startswith("typing.List"):
+        assert len(t.__args__) == 1
+        _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True, input_field=input_field))
+        if nonnull:
+            return GraphQLNonNull(_t)
+        return _t
+    elif str(t).startswith("typing.Set"):
         assert len(t.__args__) == 1
         _t = GraphQLList(python_type_to_graphql_type(cls, t.__args__[0], nonnull=True, input_field=input_field))
         if nonnull:
