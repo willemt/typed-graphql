@@ -226,13 +226,18 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
         parsed_docstring = docstring_parser.parse(docstring)
         arg_name_to_doc = {x.arg_name: x.description for x in parsed_docstring.params}
 
-        args = {
-            snake_to_camel(param_name, upper=False): GraphQLArgument(
-                python_type_to_graphql_type(cls, param.annotation, input_field=True),
-                description=arg_name_to_doc.get(param_name, ""),
-            )
-            for param_name, param in params[arg_offset:]
-        }
+        args = {}
+
+        for param_name, param in params[arg_offset:]:
+            try:
+                args[snake_to_camel(param_name, upper=False)] = GraphQLArgument(
+                    python_type_to_graphql_type(cls, param.annotation, input_field=True),
+                    description=arg_name_to_doc.get(param_name, ""),
+                )
+            except PythonToGraphQLTypeConversionException:
+                raise TypeUnrepresentableAsGraphql(
+                    f"Type '{param.annotation}' for '{param_name}' of {cls.__name__}.{attr_name} can not be converted to a GraphQL type",
+                )
 
         try:
             return_type = cls.__annotations__[attr_name].__args__[-1]
@@ -261,11 +266,13 @@ def graphql_type(cls, input_field: bool = False) -> GraphQLType:
         except PythonToGraphQLTypeConversionException:
             raise ReturnTypeMissing(f"{attr_name} of {cls} is missing return type")
         except TypeUnrepresentableAsGraphql as e:
-            # print(inspect.getsource(attr))
-            raise TypeUnrepresentableAsGraphql(
-                f"Return type {return_type} for {attr_name} can not be converted to a GraphQL type",
-                e,
-            )
+            if e.original_exception:
+                # print(inspect.getsource(attr))
+                raise TypeUnrepresentableAsGraphql(
+                    f"Return type {return_type} for {attr_name} can not be converted to a GraphQL type",
+                    e,
+                )
+            raise
 
         if is_staticmethod(attr):
             field = Field(graphql_ret_type, args=args, resolve=resolver)
@@ -304,7 +311,7 @@ class PythonToGraphQLTypeConversionException(Exception):
 class TypeUnrepresentableAsGraphql(Exception):
     """When a type can't be represented as GraphQL"""
 
-    def __init__(self, name: str, e: Exception):
+    def __init__(self, name: str, e: Optional[Exception] = None):
         self.name = name
         self.original_exception = e
 

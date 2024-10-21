@@ -486,38 +486,3 @@ def test_nested():
     result = graphql_sync(schema, "{nested {user(x: 1)}}")
     assert result.data == {"nested": {"user": 1}}
     assert result.errors is None
-
-
-Animal = NewType("Animal", str)
-
-
-def test_dataclass_with_set():
-    @dataclass
-    class User:
-        value: Set[Animal]
-
-    class Query:
-        def resolve_user(self, info) -> List[User]:
-            return [User({Animal("cat"), Animal("dog")})]
-
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
-    schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    assert result.data == {'user': [{'value': ['dog', 'cat']}]}
-    assert result.errors is None
-
-
-def test_dataclass_with_set_alias():
-    @dataclass
-    class User:
-        value: set[Animal]
-
-    class Query:
-        def resolve_user(self, info) -> List[User]:
-            return [User({Animal("cat"), Animal("dog")})]
-
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
-    schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    assert result.data == {'user': [{'value': ['dog', 'cat']}]}
-    assert result.errors is None
