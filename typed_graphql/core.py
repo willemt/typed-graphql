@@ -59,7 +59,8 @@ class TypedGraphqlMiddlewareManager(MiddlewareManager):
                 field_class = field_resolver.__annotations__[name]
             except KeyError:
                 return value
-            return field_class(**value)
+            snake_case_value = {camel_to_snake(k): v for k, v in value.items()}
+            return field_class(**snake_case_value)
 
         def resolve(data, info, **args):
             args = {

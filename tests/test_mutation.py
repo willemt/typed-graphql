@@ -188,3 +188,46 @@ def test_mutation_with_dataclass_input_object():
         middleware=TypedGraphqlMiddlewareManager(),
     )
     assert result.data == {"createUser": {"colour": "RED"}}
+
+
+def test_mutation_with_dataclass_input_object_snake_case():
+    class Colour(enum.Enum):
+        RED = '1'
+        BLUE = '2'
+        GREEN = '3'
+
+    class User(dict):
+        def resolve_colour(d, info) -> Colour:
+            return d["colour"]
+
+    class Query:
+        @staticresolver
+        def user(data, info) -> str:
+            return ""
+
+    @dataclass
+    class UserInput:
+        my_colour: Colour
+
+    class Mutation:
+        @staticresolver
+        def create_user(
+            data,
+            info,
+            user: UserInput
+        ) -> User:
+            return User({"colour": user.my_colour})
+
+    schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
+    result = graphql_sync(
+        schema,
+        """
+    mutation createUser {
+        createUser(user: {myColour: RED}) {
+            colour
+        }
+    }
+    """,
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    assert result.data == {"createUser": {"colour": "RED"}}
