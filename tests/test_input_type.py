@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import enum
 from typing import List, Optional, TypedDict
 
@@ -12,6 +13,22 @@ class MyEnum(enum.Enum):
 
 def test_input():
     class UserInput(TypedDict):
+        name: str
+        age: Optional[int]
+        children: List[str]
+        badges: List[List[str]]
+
+    x = graphql_input_type(UserInput)
+    assert x.fields.keys() == {"name", "age", "children", "badges"}
+    assert str(x.fields["age"].type) == "Int"
+    assert str(x.fields["badges"].type) == "[[String!]!]!"
+    assert str(x.fields["children"].type) == "[String!]!"
+    assert str(x.fields["name"].type) == "String!"
+
+
+def test_dataclass_input():
+    @dataclass
+    class UserInput:
         name: str
         age: Optional[int]
         children: List[str]

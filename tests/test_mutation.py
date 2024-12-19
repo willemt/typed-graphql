@@ -1,15 +1,15 @@
+from dataclasses import dataclass
 import enum
-from typing import Any, List, Optional, TypedDict
+from typing import Any
+from typing import List
+from typing import Optional
+from typing import TypedDict
 
 from graphql import graphql_sync
-from graphql.type import (
-    GraphQLInputField as InputField,
-    GraphQLInputObjectType as InputObjectType,
-    GraphQLSchema,
-    GraphQLString as String,
-)
+from graphql.type import GraphQLSchema
 
 from typed_graphql import graphql_type, staticresolver
+from typed_graphql import TypedGraphqlMiddlewareManager
 
 
 def get(field: str, data, info) -> Optional[Any]:
@@ -145,3 +145,46 @@ def test_list_of_input_types():
 
     # There's no exception raised
     graphql_type(Mutation)
+
+
+def test_mutation_with_dataclass_input_object():
+    class Colour(enum.Enum):
+        RED = '1'
+        BLUE = '2'
+        GREEN = '3'
+
+    class User(dict):
+        def resolve_colour(d, info) -> Colour:
+            return d["colour"]
+
+    class Query:
+        @staticresolver
+        def user(data, info) -> str:
+            return ""
+
+    @dataclass
+    class UserInput:
+        colour: Colour
+
+    class Mutation:
+        @staticresolver
+        def create_user(
+            data,
+            info,
+            user: UserInput
+        ) -> User:
+            return User({"colour": user.colour})
+
+    schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
+    result = graphql_sync(
+        schema,
+        """
+    mutation createUser {
+        createUser(user: {colour: RED}) {
+            colour
+        }
+    }
+    """,
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    assert result.data == {"createUser": {"colour": "RED"}}
