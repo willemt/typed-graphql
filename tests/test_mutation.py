@@ -4,6 +4,7 @@ from typing import Any
 from typing import List
 from typing import Optional
 from typing import TypedDict
+from typing import NewType
 
 from graphql import graphql_sync
 from graphql.type import GraphQLSchema
@@ -231,3 +232,41 @@ def test_mutation_with_dataclass_input_object_snake_case():
         middleware=TypedGraphqlMiddlewareManager(),
     )
     assert result.data == {"createUser": {"colour": "RED"}}
+
+
+def test_input_with_newtype():
+
+    class User(dict):
+        def resolve_colour(d, info) -> str:
+            return d["xxx"]
+
+    class Query:
+        @staticresolver
+        def user(data, info) -> str:
+            return ""
+
+    UserInput = NewType("UserInput", str)
+
+    class Mutation:
+        @staticresolver
+        def create_user(
+            data,
+            info,
+            user_id: UserInput
+        ) -> User:
+            return User({"xxx": user_id})
+
+    schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
+    result = graphql_sync(
+        schema,
+        """
+    mutation createUser {
+        createUser(userId: "red") {
+            colour
+        }
+    }
+    """,
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    print(result.errors)
+    assert result.data == {"createUser": {"colour": "red"}}

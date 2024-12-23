@@ -55,8 +55,9 @@ class TypedGraphqlMiddlewareManager(MiddlewareManager):
     def get_field_resolver(self, field_resolver):
 
         def hydrate_field(name: str, value: Any) -> Any:
+            annotations = getattr(field_resolver, '__annotations__', {})
             try:
-                field_class = field_resolver.__annotations__[name]
+                field_class = annotations[name]
             except KeyError:
                 return value
             snake_case_value = {camel_to_snake(k): v for k, v in value.items()}
