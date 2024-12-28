@@ -1,10 +1,15 @@
-from functools import partial
-from typing import Any, List, Optional
+from typing import Any
+from typing import List
+from typing import Optional
 
 from graphql import graphql_sync
-from graphql.type import GraphQLField, GraphQLObjectType, GraphQLSchema, GraphQLString
+from graphql.type import GraphQLField
+from graphql.type import GraphQLObjectType
+from graphql.type import GraphQLSchema
+from graphql.type import GraphQLString
 
-from typed_graphql import graphql_type, staticresolver
+from typed_graphql import graphql_type
+from typed_graphql import staticresolver
 
 
 def get(field: str, data, info) -> Optional[Any]:

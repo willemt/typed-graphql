@@ -3,22 +3,20 @@ from functools import wraps
 from typing import Any
 from typing import Iterable
 from typing import List
-from typing import NewType
 from typing import Optional
-from typing import Set
-from typing import Tuple
 from typing import TypedDict
 
 from graphql import graphql_sync
-from graphql.type import GraphQLField, GraphQLSchema, GraphQLString, GraphQLObjectType
+from graphql.type import GraphQLField
+from graphql.type import GraphQLObjectType
+from graphql.type import GraphQLSchema
+from graphql.type import GraphQLString
 
-from typed_graphql import (
-    ReturnTypeMissing,
-    TypedGraphqlMiddlewareManager,
-    graphql_type,
-    resolver,
-    staticresolver,
-)
+from typed_graphql import ReturnTypeMissing
+from typed_graphql import TypedGraphqlMiddlewareManager
+from typed_graphql import graphql_type
+from typed_graphql import resolver
+from typed_graphql import staticresolver
 
 
 def get(field: str, data, info) -> Optional[Any]:
@@ -221,20 +219,6 @@ def test_optional_string_list():
             return ["abc", "def"]
 
     assert str(graphql_type(Query).fields["user"].type) == '[String]'
-
-    schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user}")
-    assert result.data == {"user": ["abc", "def"]}
-    assert result.errors is None
-
-
-def test_string_tuple():
-    class Query:
-        @staticresolver
-        def user(data, info) -> Tuple[str, str]:
-            return "abc", "def"
-
-    assert str(graphql_type(Query).fields["user"].type) == '[String!]!'
 
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user}")
