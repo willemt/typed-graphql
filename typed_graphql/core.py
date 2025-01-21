@@ -1,6 +1,7 @@
 import enum
 import inspect
 import sys
+from dataclasses import _MISSING_TYPE
 from dataclasses import fields as dataclass_fields
 from dataclasses import is_dataclass
 from datetime import date
@@ -69,7 +70,6 @@ class GraphQLTypeConversionContext:
 
 class TypedGraphqlMiddlewareManager(MiddlewareManager):
     def get_field_resolver(self, field_resolver):
-
         def hydrate_field(name: str, value: Any) -> Any:
             annotations = getattr(field_resolver, "__annotations__", {})
             try:
@@ -95,6 +95,8 @@ class TypedGraphqlMiddlewareManager(MiddlewareManager):
                     if getattr(resolver, "__is_resolver", None):
                         return resolver(info, **args)
                 except AttributeError:
+                    pass
+                except TypeError:
                     pass
                 return field_resolver(data, info, **args)
 
@@ -134,7 +136,6 @@ def staticresolver(f: F) -> F:
 def graphql_input_type(
     cls, ctx: Optional[GraphQLTypeConversionContext] = None
 ) -> GraphQLInputObjectType:
-
     if not ctx:
         ctx = GraphQLTypeConversionContext()
 
@@ -151,6 +152,9 @@ def graphql_input_type(
         if not attr_name.startswith("_")
     )
 
+    if is_dataclass(cls):
+        fields.update(parse_dataclass_input_fields(cls, ctx))
+
     for attr_name, attr in public_attrs:
         if attr_name.startswith("_"):
             continue
@@ -158,7 +162,8 @@ def graphql_input_type(
             python_type_to_graphql_type(cls, attr, ctx, input_field=True)
         )
         field_name = snake_to_camel(attr_name, upper=False)
-        fields[field_name] = field
+        if field_name not in fields:
+            fields[field_name] = field
 
     if not cls.__name__.endswith("Input"):
         name = f"{cls.__name__}Input"
@@ -207,6 +212,38 @@ def parse_dataclass_fields(cls, ctx: GraphQLTypeConversionContext) -> Dict[str, 
     return fields
 
 
+def parse_dataclass_input_fields(
+    cls, ctx: GraphQLTypeConversionContext
+) -> Dict[str, InputField]:
+    fields = {}
+
+    # Obtain docstring
+    docstring = cls.__doc__
+    parsed_docstring = docstring_parser.parse(docstring)
+    arg_name_to_doc = {x.arg_name: x.description for x in parsed_docstring.params}
+
+    for f in dataclass_fields(cls):
+        if f.name in (getattr(cls, "_resolver_blocklist", None) or []):
+            continue
+        field_name = snake_to_camel(f.name, upper=False)
+
+        if not isinstance(f.default_factory, _MISSING_TYPE):
+            default_value = f.default_factory()
+        elif isinstance(f.default, _MISSING_TYPE):
+            default_value = Undefined
+        else:
+            default_value = f.default
+
+        field = InputField(
+            python_type_to_graphql_type(cls, f.type, ctx),
+            description=arg_name_to_doc.get(f.name),
+            default_value=default_value,
+        )
+        fields[field_name] = field
+
+    return fields
+
+
 def parse_dict_fields(cls, ctx: GraphQLTypeConversionContext) -> Dict[str, Field]:
     fields = {}
 
@@ -245,6 +282,8 @@ def graphql_type(
 
     if not ctx:
         ctx = GraphQLTypeConversionContext()
+
+    assert isinstance(ctx, GraphQLTypeConversionContext)
 
     if input_field:
         return graphql_input_type(cls, ctx)
@@ -505,8 +544,8 @@ def python_type_to_graphql_type(
     cls,
     t,
     ctx: GraphQLTypeConversionContext,
-    nonnull=True,
-    input_field=False,
+    nonnull: bool = True,
+    input_field: bool = False,
 ):
     if type(t) is GenericAlias:
         origin = get_origin(t)
@@ -638,7 +677,9 @@ def python_type_to_graphql_type(
                 raise PythonToGraphQLTypeConversionException(t)
 
             elif issubclass(t, object):
-                return class_to_graphql_type(t, ctx, input_field=input_field, nonnull=nonnull)
+                return class_to_graphql_type(
+                    t, ctx, input_field=input_field, nonnull=nonnull
+                )
 
             else:
                 raise PythonToGraphQLTypeConversionException(t)
