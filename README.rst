@@ -73,7 +73,7 @@ Python datetime to "Datetime" scalar
                 )
             ]
 
-Pythonl date to "Date" scalar
+Python date to "Date" scalar
 
 
 .. code-block:: python
