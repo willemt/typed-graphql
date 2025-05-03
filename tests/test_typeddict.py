@@ -70,12 +70,15 @@ def test_typeddict_input():
             return User({"name": "xxx"})
 
     schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
-    result = graphql_sync(schema, """
+    result = graphql_sync(
+        schema,
+        """
     mutation createUser {
         createUser(category: {animal: {name: "test"}, name: "10"}) {
             name
         }
     }
-    """)
+    """,
+    )
     print(result)
     assert result.data == {"createUser": {"name": "xxx"}}

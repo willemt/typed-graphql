@@ -6,9 +6,9 @@ from typed_graphql import graphql_input_type
 
 
 class MyEnum(enum.Enum):
-    RED = '1'
-    BLUE = '2'
-    GREEN = '3'
+    RED = "1"
+    BLUE = "2"
+    GREEN = "3"
 
 
 def test_input():

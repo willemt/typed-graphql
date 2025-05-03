@@ -32,10 +32,12 @@ def test_dataclass_with_set():
         def resolve_user(self, info) -> List[User]:
             return [User({Animal("cat"), Animal("dog")})]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    assert sorted(result.data["user"][0]["value"]) == sorted(['dog', 'cat'])
+    result = graphql_sync(
+        schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager()
+    )
+    assert sorted(result.data["user"][0]["value"]) == sorted(["dog", "cat"])
     assert result.errors is None
 
 
@@ -48,8 +50,10 @@ def test_dataclass_with_set_alias():
         def resolve_user(self, info) -> List[User]:
             return [User({Animal("cat"), Animal("dog")})]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    assert sorted(result.data["user"][0]["value"]) == sorted(['dog', 'cat'])
+    result = graphql_sync(
+        schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager()
+    )
+    assert sorted(result.data["user"][0]["value"]) == sorted(["dog", "cat"])
     assert result.errors is None

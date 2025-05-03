@@ -12,8 +12,7 @@ from .core import (
 from .execute import execute_async
 
 __all__ = [
-    "GraphQLTypeConversionContext"
-    "ReturnTypeMissing",
+    "GraphQLTypeConversionContext" "ReturnTypeMissing",
     "TypeUnrepresentableAsGraphql",
     "TypedGraphqlMiddlewareManager",
     "execute_async",

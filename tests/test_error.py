@@ -21,7 +21,7 @@ class MyEnum(enum.Enum):
 
 
 def test_missing_type():
-    X = TypeVar('X')
+    X = TypeVar("X")
 
     class Paged(Generic[X]):
         def resolve_my_value(self, info) -> List[X]:
@@ -38,6 +38,9 @@ def test_missing_type():
     try:
         graphql_type(Query)
     except Exception as e:
-        assert e.name == "Type '<class 'inspect._empty'>' for 'data' of User.resolve_xxx can not be converted to a GraphQL type"
+        assert (
+            e.name
+            == "Type '<class 'inspect._empty'>' for 'data' of User.resolve_xxx can not be converted to a GraphQL type"
+        )
     else:
         raise Exception()

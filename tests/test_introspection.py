@@ -120,7 +120,9 @@ def test_introspection_query():
             return [User()]
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, INTROSPECTION, middleware=TypedGraphqlMiddlewareManager())
+    result = graphql_sync(
+        schema, INTROSPECTION, middleware=TypedGraphqlMiddlewareManager()
+    )
     assert result.data == {
         "__schema": {
             "directives": [

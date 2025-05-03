@@ -29,10 +29,12 @@ def test_datetime_schema():
 
     class Query:
         def resolve_user(self, info) -> List[User]:
-            return [User(
-                datetime(2020, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-                datetime(2019, 1, 1, 1, 1, 1, tzinfo=timezone.utc),
-            )]
+            return [
+                User(
+                    datetime(2020, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+                    datetime(2019, 1, 1, 1, 1, 1, tzinfo=timezone.utc),
+                )
+            ]
 
     assert (
         print_schema(
@@ -62,12 +64,14 @@ def test_datetime_uses_datetime_scalar():
 
     class Query:
         def resolve_user(self, info) -> List[User]:
-            return [User(
-                datetime(2020, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-                datetime(2019, 1, 1, 1, 1, 1, tzinfo=timezone.utc),
-            )]
+            return [
+                User(
+                    datetime(2020, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+                    datetime(2019, 1, 1, 1, 1, 1, tzinfo=timezone.utc),
+                )
+            ]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(
         schema, "{user { login }}", Query(), middleware=TypedGraphqlMiddlewareManager()
@@ -83,16 +87,18 @@ def test_datetime_must_be_utc():
 
     class Query:
         def resolve_user(self, info) -> List[User]:
-            return [User(
-                datetime(2020, 1, 1, 0, 0, 0, tzinfo=None),
-            )]
+            return [
+                User(
+                    datetime(2020, 1, 1, 0, 0, 0, tzinfo=None),
+                )
+            ]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(
         schema, "{user { login }}", Query(), middleware=TypedGraphqlMiddlewareManager()
     )
-    assert result.errors[0].message == 'Datetime must UTC'
+    assert result.errors[0].message == "Datetime must UTC"
 
 
 def test_datetime_must_be_datetime():
@@ -104,12 +110,12 @@ def test_datetime_must_be_datetime():
         def resolve_user(self, info) -> List[User]:
             return [User("haha garbage")]  # type: ignore
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(
         schema, "{user { login }}", Query(), middleware=TypedGraphqlMiddlewareManager()
     )
-    assert result.errors[0].message == 'Value is not a datetime instance'
+    assert result.errors[0].message == "Value is not a datetime instance"
 
 
 def test_datetime_optional():
@@ -121,7 +127,7 @@ def test_datetime_optional():
         def resolve_user(self, info) -> List[User]:
             return [User(None)]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(
         schema, "{user { login }}", Query(), middleware=TypedGraphqlMiddlewareManager()

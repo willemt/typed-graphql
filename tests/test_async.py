@@ -7,7 +7,12 @@ from graphql import graphql
 from graphql.type import GraphQLSchema
 from graphql.pyutils import is_awaitable
 
-from typed_graphql import TypedGraphqlMiddlewareManager, execute_async, graphql_type, staticresolver
+from typed_graphql import (
+    TypedGraphqlMiddlewareManager,
+    execute_async,
+    graphql_type,
+    staticresolver,
+)
 
 
 def get(field: str, data, info) -> Optional[Any]:
@@ -40,9 +45,7 @@ def test_async_string_list():
             return iter(["abc", "def"])
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = asyncio.new_event_loop().run_until_complete(
-        graphql(schema, "{user}")
-    )
+    result = asyncio.new_event_loop().run_until_complete(graphql(schema, "{user}"))
     assert result.data == {"user": ["abc", "def"]}
     assert result.errors is None
 
@@ -101,7 +104,7 @@ def test_async_lists_resolved_in_parallel():
     t1 = time.time()
     total = t1 - t0
     assert total < 1.2
-    assert result.data == {'user': ['abc', 'def'], 'xxx': ['ghi', 'jkl']}
+    assert result.data == {"user": ["abc", "def"], "xxx": ["ghi", "jkl"]}
     assert result.errors is None
 
 
@@ -186,9 +189,15 @@ def test_with_event():
 
     schema = GraphQLSchema(query=graphql_type(Query))
     result = asyncio.new_event_loop().run_until_complete(
-        graphql(schema, "{user { pageInfo { endCursor } nodes }}", middleware=TypedGraphqlMiddlewareManager())
+        graphql(
+            schema,
+            "{user { pageInfo { endCursor } nodes }}",
+            middleware=TypedGraphqlMiddlewareManager(),
+        )
     )
-    assert result.data == {'user': {'nodes': ['a', 'b', 'c'], 'pageInfo': {'endCursor': '0'}}}
+    assert result.data == {
+        "user": {"nodes": ["a", "b", "c"], "pageInfo": {"endCursor": "0"}}
+    }
     assert result.errors is None
 
     # schema = GraphQLSchema(query=graphql_type(Query))
@@ -212,7 +221,12 @@ def test_nested_async():
 
     schema = GraphQLSchema(query=graphql_type(Query))
     result = asyncio.new_event_loop().run_until_complete(
-        graphql(schema, "{myUser {value}}", Query(), middleware=TypedGraphqlMiddlewareManager())
+        graphql(
+            schema,
+            "{myUser {value}}",
+            Query(),
+            middleware=TypedGraphqlMiddlewareManager(),
+        )
     )
     assert result.data == {"myUser": {"value": "xxx"}}
     assert result.errors is None
@@ -238,5 +252,5 @@ def test_nested_async_iterators():
     result = asyncio.new_event_loop().run_until_complete(
         execute_async(schema, "{myUser {value {value}}}", Query())
     )
-    assert result.data == {'myUser': [{'value': [{'value': 'yyy'}]}]}
+    assert result.data == {"myUser": [{"value": [{"value": "yyy"}]}]}
     assert result.errors is None
