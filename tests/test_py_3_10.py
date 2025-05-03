@@ -1,14 +1,13 @@
-# from __future__ import annotations
+import sys
 
+import pytest
 from graphql import graphql_sync
 from graphql.type import GraphQLSchema
-
-from typed_graphql import (
-    graphql_type,
-    staticresolver,
-)
+from typed_graphql import graphql_type
+from typed_graphql import staticresolver
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="Requires Python 3.10 or higher")
 def test_optional_str_py_3_10():
     class Query:
         @staticresolver
