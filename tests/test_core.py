@@ -37,7 +37,7 @@ def test_core():
     result = graphql_sync(schema, "{user}")
     assert result.data == {"user": "xxx"}
     assert result.errors is None
-    assert str(graphql_type(Query).fields["user"].type) == 'String!'
+    assert str(graphql_type(Query).fields["user"].type) == "String!"
 
 
 def test_resolve_prefix():
@@ -58,7 +58,9 @@ def test_resolve_prefix_with_object():
             return "xxx"
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    result = graphql_sync(
+        schema, "{user}", Query(), middleware=TypedGraphqlMiddlewareManager()
+    )
     assert result.data == {"user": "xxx"}
     assert result.errors is None
 
@@ -69,7 +71,9 @@ def test_resolve_prefix_with_object_with_data():
             return self.get("x", "")
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user}", Query(x=1), middleware=TypedGraphqlMiddlewareManager())
+    result = graphql_sync(
+        schema, "{user}", Query(x=1), middleware=TypedGraphqlMiddlewareManager()
+    )
     assert result.data == {"user": "1"}
     assert result.errors is None
 
@@ -80,7 +84,12 @@ def test_resolve_with_snake_case_argument():
             return key_word
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, '{user(keyWord: "111")}', Query(x=1), middleware=TypedGraphqlMiddlewareManager())
+    result = graphql_sync(
+        schema,
+        '{user(keyWord: "111")}',
+        Query(x=1),
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
     assert result.data == {"user": "111"}
     assert result.errors is None
 
@@ -91,7 +100,12 @@ def test_resolve_with_positional_argument():
             return key_word
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, '{user(keyWord: "111")}', Query(x=1), middleware=TypedGraphqlMiddlewareManager())
+    result = graphql_sync(
+        schema,
+        '{user(keyWord: "111")}',
+        Query(x=1),
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
     assert result.data == {"user": "111"}
     assert result.errors is None
 
@@ -102,7 +116,9 @@ def test_resolve_prefix_with_long_name_object_with_data():
             return self.get("x", "")
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{myUser}", Query(x=1), middleware=TypedGraphqlMiddlewareManager())
+    result = graphql_sync(
+        schema, "{myUser}", Query(x=1), middleware=TypedGraphqlMiddlewareManager()
+    )
     assert result.data == {"myUser": "1"}
     assert result.errors is None
 
@@ -117,7 +133,7 @@ def test_int():
     result = graphql_sync(schema, "{user}", Query())
     assert result.data == {"user": 10}
     assert result.errors is None
-    assert str(graphql_type(Query).fields["user"].type) == 'Int!'
+    assert str(graphql_type(Query).fields["user"].type) == "Int!"
 
 
 def test_int_with_staticresolver():
@@ -130,7 +146,7 @@ def test_int_with_staticresolver():
     result = graphql_sync(schema, "{user}")
     assert result.data == {"user": 10}
     assert result.errors is None
-    assert str(graphql_type(Query).fields["user"].type) == 'Int!'
+    assert str(graphql_type(Query).fields["user"].type) == "Int!"
 
 
 def test_int_with_staticmethod():
@@ -144,7 +160,7 @@ def test_int_with_staticmethod():
     result = graphql_sync(schema, "{user}")
     assert result.data == {"user": 10}
     assert result.errors is None
-    assert str(graphql_type(Query).fields["user"].type) == 'Int!'
+    assert str(graphql_type(Query).fields["user"].type) == "Int!"
 
 
 def test_bool():
@@ -157,7 +173,7 @@ def test_bool():
     result = graphql_sync(schema, "{user}")
     assert result.data == {"user": True}
     assert result.errors is None
-    assert str(graphql_type(Query).fields["user"].type) == 'Boolean!'
+    assert str(graphql_type(Query).fields["user"].type) == "Boolean!"
 
 
 def test_expects_int():
@@ -169,7 +185,9 @@ def test_expects_int():
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user}")
     assert result.data is None
-    assert str(result.errors[0]).startswith("Int cannot represent non-integer value: 'xxx'")
+    assert str(result.errors[0]).startswith(
+        "Int cannot represent non-integer value: 'xxx'"
+    )
 
 
 def test_str():
@@ -182,7 +200,7 @@ def test_str():
     result = graphql_sync(schema, "{user}")
     assert result.data == {"user": "a string!"}
     assert result.errors is None
-    assert str(graphql_type(Query).fields["user"].type) == 'String!'
+    assert str(graphql_type(Query).fields["user"].type) == "String!"
 
 
 def test_optional_str():
@@ -195,7 +213,7 @@ def test_optional_str():
     result = graphql_sync(schema, "{user}")
     assert result.data == {"user": "a string!"}
     assert result.errors is None
-    assert str(graphql_type(Query).fields["user"].type) == 'String!'
+    assert str(graphql_type(Query).fields["user"].type) == "String!"
 
 
 def test_string_list():
@@ -204,7 +222,7 @@ def test_string_list():
         def user(data, info) -> List[str]:
             return ["abc", "def"]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[String!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[String!]!"
 
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user}")
@@ -218,7 +236,7 @@ def test_optional_string_list():
         def user(data, info) -> Optional[List[Optional[str]]]:
             return ["abc", "def"]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[String]'
+    assert str(graphql_type(Query).fields["user"].type) == "[String]"
 
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user}")
@@ -238,9 +256,11 @@ def test_dataclass():
         def resolve_user(self, info) -> List[User]:
             return [User(1)]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    result = graphql_sync(
+        schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager()
+    )
     assert result.data == {"user": [{"value": "1"}]}
     assert result.errors is None
 
@@ -251,28 +271,31 @@ def test_iterable():
         def user(data, info) -> Iterable[str]:
             return ["abc", "def"]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[String!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[String!]!"
 
 
 def test_graphql_object_type():
-    Status = GraphQLObjectType( # NOQA
+    Status = GraphQLObjectType(  # NOQA
         "Status",
         {
-            "text": GraphQLField(GraphQLString, resolve=lambda data, info: data["something"])
-        })
+            "text": GraphQLField(
+                GraphQLString, resolve=lambda data, info: data["something"]
+            )
+        },
+    )
 
     class Query:
         @staticresolver
         def user(data, info) -> Status:
             return {"something": "sometext"}
 
-    assert str(graphql_type(Query).fields["user"].type) == 'Status!'
+    assert str(graphql_type(Query).fields["user"].type) == "Status!"
 
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user { text } }")
     assert result.data == {"user": {"text": "sometext"}}
     assert result.errors is None
-    assert str(graphql_type(Query).fields["user"].type) == 'Status!'
+    assert str(graphql_type(Query).fields["user"].type) == "Status!"
 
 
 def test_argument():
@@ -308,7 +331,9 @@ def test_optional_argument_needs_default():
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user}")
     assert result.data is None
-    assert "user() missing 1 required positional argument: 'add'" in str(result.errors[0])
+    assert "user() missing 1 required positional argument: 'add'" in str(
+        result.errors[0]
+    )
 
 
 def test_mutation():
@@ -381,6 +406,7 @@ def my_wrapper(func):
     @wraps(func)
     def wrapper(data, info, **kwargs):
         return func(data, info, **kwargs)
+
     return wrapper
 
 
@@ -437,8 +463,8 @@ def test_object_type_can_be_referenced_more_than_once():
             return [User()]
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, '{users {value}}')
-    assert result.data == {'users': [{'value': 'xxx'}]}
+    result = graphql_sync(schema, "{users {value}}")
+    assert result.data == {"users": [{"value": "xxx"}]}
 
 
 def test_missing_return_type():
@@ -450,7 +476,10 @@ def test_missing_return_type():
     try:
         graphql_type(Query)
     except ReturnTypeMissing as e:
-        assert str(e) == "user of <class 'test_core.test_missing_return_type.<locals>.Query'> is missing return type"
+        assert (
+            str(e)
+            == "user of <class 'test_core.test_missing_return_type.<locals>.Query'> is missing return type"
+        )
     else:
         raise Exception()
 

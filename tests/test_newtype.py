@@ -13,7 +13,6 @@ MyId = NewType("MyId", str)
 
 
 def test_newtype_can_be_nullable():
-
     class Query:
         @staticresolver
         def user(data, info, id: Optional[MyId] = None) -> str:
@@ -22,11 +21,10 @@ def test_newtype_can_be_nullable():
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user}")
     assert result.errors is None
-    assert str(graphql_type(Query).fields["user"].args["id"].type ) == 'String'
+    assert str(graphql_type(Query).fields["user"].args["id"].type) == "String"
 
 
 def test_newtype_can_be_nullable_with_middleware():
-
     class Query:
         @staticresolver
         def get_user(data, info, id: MyId) -> str:

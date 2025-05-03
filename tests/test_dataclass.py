@@ -36,9 +36,11 @@ def test_dataclass_has_auto_resolvers():
         def resolve_user(self, info) -> List[User]:
             return [User("1")]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    result = graphql_sync(
+        schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager()
+    )
     assert result.data == {"user": [{"value": "1"}]}
     assert result.errors is None
 
@@ -52,9 +54,14 @@ def test_dataclass_has_auto_resolvers_with_snake_casing():
         def resolve_user(self, info) -> List[User]:
             return [User("1")]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { myValue }}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    result = graphql_sync(
+        schema,
+        "{user { myValue }}",
+        Query(),
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
     assert result.data == {"user": [{"myValue": "1"}]}
     assert result.errors is None
 
@@ -69,15 +76,19 @@ def test_dataclass_with_multiple_fields():
         def resolve_user(self, info) -> List[User]:
             return [User("abc", "1")]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { xxx value }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    assert result.data == {"user": [{'value': '1', 'xxx': 'abc'}]}
+    result = graphql_sync(
+        schema,
+        "{user { xxx value }}",
+        Query(),
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    assert result.data == {"user": [{"value": "1", "xxx": "abc"}]}
     assert result.errors is None
 
 
 def test_dataclass_str_no_default():
-
     @dataclass
     class User:
         value: str
@@ -89,22 +100,27 @@ def test_dataclass_str_no_default():
             return [user.value]
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    assert print_schema(schema) == """type Query {
+    assert (
+        print_schema(schema)
+        == """type Query {
   test(user: UserInput!): [String!]!
 }
 
 input UserInput {
   value: String!
 }"""
+    )
 
     result = graphql_sync(
         schema, "{test(user: {})}", Query(), middleware=TypedGraphqlMiddlewareManager()
     )
-    assert result.errors[0].message == "Field 'UserInput.value' of required type 'String!' was not provided."
+    assert (
+        result.errors[0].message
+        == "Field 'UserInput.value' of required type 'String!' was not provided."
+    )
 
 
 def test_dataclass_str_default():
-
     @dataclass
     class User:
         value: str = "foo"
@@ -116,13 +132,16 @@ def test_dataclass_str_default():
             return [user.value]
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    assert print_schema(schema) == """type Query {
+    assert (
+        print_schema(schema)
+        == """type Query {
   test(user: UserInput!): [String!]!
 }
 
 input UserInput {
   value: String! = "foo"
 }"""
+    )
 
     result = graphql_sync(
         schema, "{test(user: {})}", Query(), middleware=TypedGraphqlMiddlewareManager()
@@ -132,7 +151,6 @@ input UserInput {
 
 
 def test_dataclass_list_no_default():
-
     @dataclass
     class User:
         value: List[str]
@@ -144,22 +162,27 @@ def test_dataclass_list_no_default():
             return [user.value]
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    assert print_schema(schema) == """type Query {
+    assert (
+        print_schema(schema)
+        == """type Query {
   test(user: UserInput!): [String!]!
 }
 
 input UserInput {
   value: [String!]!
 }"""
+    )
 
     result = graphql_sync(
         schema, "{test(user: {})}", Query(), middleware=TypedGraphqlMiddlewareManager()
     )
-    assert result.errors[0].message == "Field 'UserInput.value' of required type '[String!]!' was not provided."
+    assert (
+        result.errors[0].message
+        == "Field 'UserInput.value' of required type '[String!]!' was not provided."
+    )
 
 
 def test_dataclass_list_default():
-
     @dataclass
     class User:
         value: List[str] = field(default_factory=lambda: ["foo"])
@@ -171,13 +194,16 @@ def test_dataclass_list_default():
             return user.value
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    assert print_schema(schema) == """type Query {
+    assert (
+        print_schema(schema)
+        == """type Query {
   test(user: UserInput!): [String!]!
 }
 
 input UserInput {
   value: [String!]! = ["foo"]
 }"""
+    )
 
     result = graphql_sync(
         schema, "{test(user: {})}", Query(), middleware=TypedGraphqlMiddlewareManager()
@@ -196,14 +222,15 @@ def test_dataclass_with_decorator():
         def resolve_user(self, info) -> List[User]:
             return [User("1")]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    assert result.data == {"user": [{'xxx': '1'}]}
+    result = graphql_sync(
+        schema, "{user { xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager()
+    )
+    assert result.data == {"user": [{"xxx": "1"}]}
 
 
 def test_dataclass_can_block_resolvers():
-
     @resolverclass(resolver_blocklist=["xxx"])
     @dataclass
     class User:
@@ -214,9 +241,11 @@ def test_dataclass_can_block_resolvers():
         def resolve_user(self, info) -> List[User]:
             return [User("1")]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
+    result = graphql_sync(
+        schema, "{user { xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager()
+    )
     assert result.data is None
     assert result.errors[0].message == "Cannot query field 'xxx' on type 'User'."
 
@@ -235,8 +264,13 @@ def test_dataclass_inheritance_passes_on_fields():
             return [User("1")]
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { value xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    assert result.data == {'user': [{'value': '1', 'xxx': None}]}
+    result = graphql_sync(
+        schema,
+        "{user { value xxx }}",
+        Query(),
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    assert result.data == {"user": [{"value": "1", "xxx": None}]}
 
 
 def test_dataclass_inheritance_passes_on_resolver_fields():
@@ -255,8 +289,13 @@ def test_dataclass_inheritance_passes_on_resolver_fields():
             return [User("1")]
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { value xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    assert result.data == {'user': [{'value': 'z', 'xxx': '1'}]}
+    result = graphql_sync(
+        schema,
+        "{user { value xxx }}",
+        Query(),
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    assert result.data == {"user": [{"value": "z", "xxx": "1"}]}
 
 
 def test_dataclass_inheritance_passes_on_resolver_fields_with_snake_case():
@@ -275,12 +314,17 @@ def test_dataclass_inheritance_passes_on_resolver_fields_with_snake_case():
             return [User("1")]
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { myValue xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    assert result.data == {'user': [{'myValue': 'z', 'xxx': '1'}]}
+    result = graphql_sync(
+        schema,
+        "{user { myValue xxx }}",
+        Query(),
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    assert result.data == {"user": [{"myValue": "z", "xxx": "1"}]}
 
 
 def test_generic():
-    X = TypeVar('X')
+    X = TypeVar("X")
 
     @dataclass
     class Paged(Generic[X]):
@@ -296,14 +340,19 @@ def test_generic():
         def resolve_user(self, info) -> List[User]:
             return [User("1")]
 
-    assert str(graphql_type(User).fields["myValue"].type) == 'String!'
+    assert str(graphql_type(User).fields["myValue"].type) == "String!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { myValue xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    assert result.data == {'user': [{'myValue': 'z', 'xxx': '1'}]}
+    result = graphql_sync(
+        schema,
+        "{user { myValue xxx }}",
+        Query(),
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    assert result.data == {"user": [{"myValue": "z", "xxx": "1"}]}
 
 
 def test_optional_generic():
-    X = TypeVar('X')
+    X = TypeVar("X")
 
     @dataclass
     class Paged(Generic[X]):
@@ -319,10 +368,15 @@ def test_optional_generic():
         def resolve_user(self, info) -> List[User]:
             return [User("1")]
 
-    assert str(graphql_type(User).fields["myValue"].type) == 'String'
+    assert str(graphql_type(User).fields["myValue"].type) == "String"
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { myValue xxx }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    assert result.data == {'user': [{'myValue': 'z', 'xxx': '1'}]}
+    result = graphql_sync(
+        schema,
+        "{user { myValue xxx }}",
+        Query(),
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    assert result.data == {"user": [{"myValue": "z", "xxx": "1"}]}
 
 
 def test_dataclass_prefers_resolvers_first():
@@ -338,5 +392,7 @@ def test_dataclass_prefers_resolvers_first():
             return [User("1")]
 
     schema = GraphQLSchema(query=graphql_type(Query))
-    result = graphql_sync(schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager())
-    assert result.data == {'user': [{'value': 'xxx'}]}
+    result = graphql_sync(
+        schema, "{user { value }}", Query(), middleware=TypedGraphqlMiddlewareManager()
+    )
+    assert result.data == {"user": [{"value": "xxx"}]}

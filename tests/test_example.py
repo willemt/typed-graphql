@@ -104,15 +104,18 @@ def test_interpersed_usage():
 
     schema = GraphQLSchema(query=query)
     result = graphql_sync(schema, "{user {value status {text}}}")
-    assert result.data == {'user': {'status': {'text': 'enabled'}, 'value': 'xxx'}}
+    assert result.data == {"user": {"status": {"text": "enabled"}, "value": "xxx"}}
 
 
 def test_interpersed_usage_with_sub_selections():
-    Status = GraphQLObjectType( # NOQA
+    Status = GraphQLObjectType(  # NOQA
         "Status",
         {
-            "text": GraphQLField(GraphQLString, resolve=lambda data, info: data["something"])
-        })
+            "text": GraphQLField(
+                GraphQLString, resolve=lambda data, info: data["something"]
+            )
+        },
+    )
 
     class User(dict):
         @staticresolver
@@ -137,4 +140,4 @@ def test_interpersed_usage_with_sub_selections():
 
     schema = GraphQLSchema(query=query)
     result = graphql_sync(schema, "{user {value status { text }}}")
-    assert result.data == {'user': {'status': {'text': 'enabled'}, 'value': 'xxx'}}
+    assert result.data == {"user": {"status": {"text": "enabled"}, "value": "xxx"}}

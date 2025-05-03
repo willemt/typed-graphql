@@ -30,7 +30,7 @@ def test_mutation():
     class Query:
         @staticresolver
         def user(data, info) -> str:
-            return""
+            return ""
 
     class Mutation:
         @staticresolver
@@ -45,13 +45,16 @@ def test_mutation():
             return User({"name": name})
 
     schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
-    result = graphql_sync(schema, """
+    result = graphql_sync(
+        schema,
+        """
     mutation createUser {
         createUser(size: 100, name: "XXX", phoneNumber: "10") {
             name
         }
     }
-    """)
+    """,
+    )
     assert result.data == {"createUser": {"name": "XXX"}}
 
 
@@ -72,29 +75,28 @@ def test_mutation_with_input_object():
 
     class Mutation:
         @staticresolver
-        def create_user(
-            data,
-            info,
-            user: UserInput
-        ) -> User:
+        def create_user(data, info, user: UserInput) -> User:
             return User({"name": user["name"]})
 
     schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
-    result = graphql_sync(schema, """
+    result = graphql_sync(
+        schema,
+        """
     mutation createUser {
         createUser(user: {id: "xxx", name: "123"}) {
             name
         }
     }
-    """)
+    """,
+    )
     assert result.data == {"createUser": {"name": "123"}}
 
 
 def test_mutation_with_enum_input_object():
     class Colour(enum.Enum):
-        RED = '1'
-        BLUE = '2'
-        GREEN = '3'
+        RED = "1"
+        BLUE = "2"
+        GREEN = "3"
 
     class User(dict):
         @staticresolver
@@ -111,21 +113,20 @@ def test_mutation_with_enum_input_object():
 
     class Mutation:
         @staticresolver
-        def create_user(
-            data,
-            info,
-            user: UserInput
-        ) -> User:
+        def create_user(data, info, user: UserInput) -> User:
             return User({"colour": user["colour"]})
 
     schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
-    result = graphql_sync(schema, """
+    result = graphql_sync(
+        schema,
+        """
     mutation createUser {
         createUser(user: {colour: RED}) {
             colour
         }
     }
-    """)
+    """,
+    )
     assert result.data == {"createUser": {"colour": "RED"}}
 
 
@@ -150,9 +151,9 @@ def test_list_of_input_types():
 
 def test_mutation_with_dataclass_input_object():
     class Colour(enum.Enum):
-        RED = '1'
-        BLUE = '2'
-        GREEN = '3'
+        RED = "1"
+        BLUE = "2"
+        GREEN = "3"
 
     class User(dict):
         def resolve_colour(d, info) -> Colour:
@@ -169,11 +170,7 @@ def test_mutation_with_dataclass_input_object():
 
     class Mutation:
         @staticresolver
-        def create_user(
-            data,
-            info,
-            user: UserInput
-        ) -> User:
+        def create_user(data, info, user: UserInput) -> User:
             return User({"colour": user.colour})
 
     schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
@@ -193,9 +190,9 @@ def test_mutation_with_dataclass_input_object():
 
 def test_mutation_with_dataclass_input_object_snake_case():
     class Colour(enum.Enum):
-        RED = '1'
-        BLUE = '2'
-        GREEN = '3'
+        RED = "1"
+        BLUE = "2"
+        GREEN = "3"
 
     class User(dict):
         def resolve_colour(d, info) -> Colour:
@@ -212,11 +209,7 @@ def test_mutation_with_dataclass_input_object_snake_case():
 
     class Mutation:
         @staticresolver
-        def create_user(
-            data,
-            info,
-            user: UserInput
-        ) -> User:
+        def create_user(data, info, user: UserInput) -> User:
             return User({"colour": user.my_colour})
 
     schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
@@ -235,7 +228,6 @@ def test_mutation_with_dataclass_input_object_snake_case():
 
 
 def test_input_with_newtype():
-
     class User(dict):
         def resolve_colour(d, info) -> str:
             return d["xxx"]
@@ -249,11 +241,7 @@ def test_input_with_newtype():
 
     class Mutation:
         @staticresolver
-        def create_user(
-            data,
-            info,
-            user_id: UserInput
-        ) -> User:
+        def create_user(data, info, user_id: UserInput) -> User:
             return User({"xxx": user_id})
 
     schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))

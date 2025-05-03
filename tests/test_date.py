@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 from datetime import date
 from datetime import timezone
@@ -30,10 +29,12 @@ def test_date_schema():
 
     class Query:
         def resolve_user(self, info) -> List[User]:
-            return [User(
-                date(2020, 1, 1),
-                date(2019, 1, 1),
-            )]
+            return [
+                User(
+                    date(2020, 1, 1),
+                    date(2019, 1, 1),
+                )
+            ]
 
     assert (
         print_schema(
@@ -63,12 +64,14 @@ def test_date_uses_date_scalar():
 
     class Query:
         def resolve_user(self, info) -> List[User]:
-            return [User(
-                date(2020, 1, 1),
-                date(2019, 1, 1),
-            )]
+            return [
+                User(
+                    date(2020, 1, 1),
+                    date(2019, 1, 1),
+                )
+            ]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(
         schema, "{user { login }}", Query(), middleware=TypedGraphqlMiddlewareManager()
@@ -86,12 +89,12 @@ def test_date_must_be_date():
         def resolve_user(self, info) -> List[User]:
             return [User("haha garbage")]  # type: ignore
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(
         schema, "{user { login }}", Query(), middleware=TypedGraphqlMiddlewareManager()
     )
-    assert result.errors[0].message == 'Value is not a date instance'
+    assert result.errors[0].message == "Value is not a date instance"
 
 
 def test_date_optional():
@@ -103,7 +106,7 @@ def test_date_optional():
         def resolve_user(self, info) -> List[User]:
             return [User(None)]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(
         schema, "{user { login }}", Query(), middleware=TypedGraphqlMiddlewareManager()

@@ -19,7 +19,7 @@ def test_optional_str_py_3_10():
     result = graphql_sync(schema, "{user}")
     assert result.data == {"user": "a string!"}
     assert result.errors is None
-    assert str(graphql_type(Query).fields["user"].type) == 'String!'
+    assert str(graphql_type(Query).fields["user"].type) == "String!"
 
 
 def test_string_list_py3_10():
@@ -28,7 +28,7 @@ def test_string_list_py3_10():
         def user(data, info) -> list[str]:
             return ["abc", "def"]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[String!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[String!]!"
 
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user}")

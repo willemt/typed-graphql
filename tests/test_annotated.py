@@ -4,7 +4,11 @@ from typing import Annotated, Any, Optional
 from graphql import GraphQLScalarType, GraphQLError, graphql
 from graphql.type import GraphQLSchema
 
-from typed_graphql import TypedGraphqlMiddlewareManager, TypeUnrepresentableAsGraphql, graphql_type
+from typed_graphql import (
+    TypedGraphqlMiddlewareManager,
+    TypeUnrepresentableAsGraphql,
+    graphql_type,
+)
 
 
 def get(field: str, data, info) -> Optional[Any]:
@@ -26,7 +30,9 @@ class NonEmptyString(GraphQLScalarType):
     @staticmethod
     def serialize(value):
         if not isinstance(value, str):
-            raise GraphQLError(f"NonEmptyString cannot represent non-string value: {repr(value)}")
+            raise GraphQLError(
+                f"NonEmptyString cannot represent non-string value: {repr(value)}"
+            )
         if len(value.strip()) == 0:
             raise GraphQLError("NonEmptyString cannot represent empty string value.")
         return value
@@ -34,7 +40,9 @@ class NonEmptyString(GraphQLScalarType):
     @staticmethod
     def parse_value(value):
         if not isinstance(value, str):
-            raise GraphQLError(f"NonEmptyString cannot represent non-string value: {repr(value)}")
+            raise GraphQLError(
+                f"NonEmptyString cannot represent non-string value: {repr(value)}"
+            )
         if len(value.strip()) == 0:
             raise GraphQLError("NonEmptyString cannot represent empty string value.")
         return value
@@ -68,7 +76,10 @@ def test_annotated_type_uses_validation():
     result = asyncio.new_event_loop().run_until_complete(
         graphql(schema, "{myUser}", Query(), middleware=TypedGraphqlMiddlewareManager())
     )
-    assert result.errors[0].message == "NonEmptyString cannot represent empty string value."
+    assert (
+        result.errors[0].message
+        == "NonEmptyString cannot represent empty string value."
+    )
     assert result.data == {"myUser": None}
 
 

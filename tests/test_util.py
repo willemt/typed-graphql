@@ -4,7 +4,7 @@ from typed_graphql.util import get_arg_for_typevar
 
 
 def test_get_arg_for_typevar():
-    X = TypeVar('X')
+    X = TypeVar("X")
 
     class Node(Generic[X]):
         def my_value(self, info) -> X:

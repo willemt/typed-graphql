@@ -5,7 +5,13 @@ from typing import Any, Generic, Iterable, List, Optional, Tuple, TypedDict, Typ
 from graphql import graphql_sync
 from graphql.type import GraphQLField, GraphQLSchema, GraphQLString, GraphQLObjectType
 
-from typed_graphql import TypedGraphqlMiddlewareManager, graphql_type, resolver, resolverclass, staticresolver
+from typed_graphql import (
+    TypedGraphqlMiddlewareManager,
+    graphql_type,
+    resolver,
+    resolverclass,
+    staticresolver,
+)
 
 from graphql import print_schema
 
@@ -14,6 +20,7 @@ def test_docstrings():
     @dataclass
     class User:
         """A user agent"""
+
         value: str
 
     class Query:
@@ -23,9 +30,11 @@ def test_docstrings():
             """
             return [User("1")]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    assert print_schema(schema) == """type Query {
+    assert (
+        print_schema(schema)
+        == """type Query {
   user(
     \"\"\"The primary key\"\"\"
     pk: String!
@@ -36,6 +45,7 @@ def test_docstrings():
 type User {
   value: String!
 }"""
+    )
 
 
 def test_docstring_with_resolver_decorator():
@@ -51,9 +61,11 @@ def test_docstring_with_resolver_decorator():
             """
             return [User("1")]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    assert print_schema(schema) == """type Query {
+    assert (
+        print_schema(schema)
+        == """type Query {
   user(
     \"\"\"The primary key\"\"\"
     pk: String!
@@ -64,12 +76,14 @@ def test_docstring_with_resolver_decorator():
 type User {
   value: String!
 }"""
+    )
 
 
 def test_docstring_with_staticresolver_decorator():
     @dataclass
     class User:
         """A user agent"""
+
         value: str
 
     class Query:
@@ -80,9 +94,11 @@ def test_docstring_with_staticresolver_decorator():
             """
             return [User("1")]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    assert print_schema(schema) == """type Query {
+    assert (
+        print_schema(schema)
+        == """type Query {
   user(
     \"\"\"The primary key\"\"\"
     pk: String!
@@ -93,6 +109,7 @@ def test_docstring_with_staticresolver_decorator():
 type User {
   value: String!
 }"""
+    )
 
 
 def test_docstring_class():
@@ -101,12 +118,14 @@ def test_docstring_class():
         """
         A user agent
         """
+
         value: str
 
     class Query:
         """
         A query for pulling data
         """
+
         @staticresolver
         def user(data, info, pk: str) -> List[User]:
             """
@@ -115,9 +134,11 @@ def test_docstring_class():
             """
             return [User("1")]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    assert print_schema(schema) == """\"\"\"A query for pulling data\"\"\"
+    assert (
+        print_schema(schema)
+        == """\"\"\"A query for pulling data\"\"\"
 type Query {
   user(
     \"\"\"The primary key\"\"\"
@@ -129,6 +150,7 @@ type Query {
 type User {
   value: String!
 }"""
+    )
 
 
 def test_docstring_with_dataclass_docstring():
@@ -138,6 +160,7 @@ def test_docstring_with_dataclass_docstring():
         A user agent
         :param value: The important value
         """
+
         value: str
 
     class Query:
@@ -145,9 +168,11 @@ def test_docstring_with_dataclass_docstring():
         def user(data, info, pk: str) -> List[User]:
             return [User("1")]
 
-    assert str(graphql_type(Query).fields["user"].type) == '[User!]!'
+    assert str(graphql_type(Query).fields["user"].type) == "[User!]!"
     schema = GraphQLSchema(query=graphql_type(Query))
-    assert print_schema(schema) == """type Query {
+    assert (
+        print_schema(schema)
+        == """type Query {
   user(pk: String!): [User!]!
 }
 
@@ -156,3 +181,4 @@ type User {
   \"\"\"The important value\"\"\"
   value: String!
 }"""
+    )
