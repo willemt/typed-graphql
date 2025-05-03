@@ -49,6 +49,109 @@ Typed-graphql:
    schema = GraphQLSchema(query=graphql_type(Query))
 
 
+Features
+--------
+
+Python datetime to "Datetime" scalar
+
+.. code-block:: python
+   :class: ignore
+
+   from graphql import graphql_sync
+
+    @dataclass
+    class User:
+        login: datetime
+        created: datetime
+
+    class Query:
+        def resolve_user(self, info) -> List[User]:
+            return [
+                User(
+                    datetime(2020, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+                    datetime(2019, 1, 1, 1, 1, 1, tzinfo=timezone.utc),
+                )
+            ]
+
+Pythonl date to "Date" scalar
+
+
+.. code-block:: python
+   :class: ignore
+
+
+    @dataclass
+    class User:
+        login: date
+        created: date
+
+    class Query:
+        def resolve_user(self, info) -> List[User]:
+            return [
+                User(
+                    date(2020, 1, 1),
+                    date(2019, 1, 1),
+                )
+            ]
+
+
+Native Python Enums
+
+
+.. code-block:: python
+   :class: ignore
+
+   class Status(enum.Enum):
+        OFFLINE = "offline"
+        ONLINE = "online"
+        DORMANT = "dormant"
+
+
+    @dataclass
+    class User:
+        status: Status
+
+    class Query:
+        def resolve_user(self, info) -> List[User]:
+            return [User(Status.OFFLINE), User(Status.ONLINE)]
+
+
+Argument defaults
+
+
+.. code-block:: python
+   :class: ignore
+
+    @dataclass
+    class User:
+        str: Name
+
+    class Query:
+        @staticresolver
+        def user(data, info, phone_number: Optional[str] = "000") -> List[User]:
+            return User("test")
+
+
+Docstrings
+
+
+.. code-block:: python
+   :class: ignore
+
+    @dataclass
+    class User:
+        """A user agent"""
+
+        value: str
+
+    class Query:
+        def resolve_user(self, info, pk: str) -> List[User]:
+            """
+            :param pk: The primary key
+            """
+            return [User("1")]
+
+
 Installation
 ------------
 .. code-block:: bash
