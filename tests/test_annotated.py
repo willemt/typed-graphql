@@ -110,8 +110,7 @@ def test_map_return_type_is_invalid():
     assert result.errors[0].message == "Type map must define one or more fields."
 
 
-class Arbitrary:
-    ...
+class Arbitrary: ...
 
 
 def test_annotated_class_instance():
