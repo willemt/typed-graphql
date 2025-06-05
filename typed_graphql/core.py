@@ -71,8 +71,9 @@ class GraphQLTypeConversionContext:
 class TypedGraphqlMiddlewareManager(MiddlewareManager):
     def get_field_resolver(self, field_resolver):
         def hydrate_field(name: str, value: Any, parent: type) -> Any:
-
-            if not isinstance(value, dict):
+            if isinstance(value, list):
+                return [hydrate_field(camel_to_snake(name), v, parent) for v in value]
+            elif not isinstance(value, dict):
                 return value
 
             annotations = getattr(parent, "__annotations__", {})
@@ -81,10 +82,14 @@ class TypedGraphqlMiddlewareManager(MiddlewareManager):
             except KeyError:
                 return value
 
+            if get_origin(field_class) is list:
+                field_class = get_args(field_class)[0]
+
             snake_case_value = {
                 camel_to_snake(k): hydrate_field(k, v, field_class)
                 for k, v in value.items()
             }
+
             return field_class(**snake_case_value)
 
         def resolve(data, info, **args):

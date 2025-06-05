@@ -227,6 +227,45 @@ def test_mutation_with_nested_dataclass_input_object():
     assert result.data == {"createUser": {"car": {"model": "xxx"}}}
 
 
+def test_mutation_with_nested_list_dataclass_input_object():
+    @dataclass
+    class Car:
+        model: str
+
+    class User(dict):
+        def resolve_cars(d, info) -> List[Car]:
+            return [Car("xxx")]
+
+    class Query:
+        @staticresolver
+        def user(data, info) -> str:
+            return ""
+
+    @dataclass
+    class UserInput:
+        cars: List[Car]
+
+    class Mutation:
+        @staticresolver
+        def create_user(data, info, user: UserInput) -> User:
+            assert isinstance(user.cars[0], Car)
+            return User(cars=[])
+
+    schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
+    result = graphql_sync(
+        schema,
+        """
+    mutation createUser {
+        createUser(user: {cars: [{model: "xxx"}]}) {
+            cars { model }
+        }
+    }
+    """,
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    assert result.data == {"createUser": {"cars": [{"model": "xxx"}]}}
+
+
 def test_mutation_with_dataclass_input_object_snake_case():
     class Colour(enum.Enum):
         RED = "1"
