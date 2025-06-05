@@ -210,7 +210,7 @@ def test_introspection_query():
                         {
                             "defaultValue": None,
                             "description": "The URL that specifies "
-                            "the behaviour of this "
+                            "the behavior of this "
                             "scalar.",
                             "name": "url",
                             "type": {
@@ -225,7 +225,7 @@ def test_introspection_query():
                         }
                     ],
                     "description": "Exposes a URL that specifies the "
-                    "behaviour of this scalar.",
+                    "behavior of this scalar.",
                     "locations": ["SCALAR"],
                     "name": "specifiedBy",
                 },
