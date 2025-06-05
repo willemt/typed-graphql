@@ -70,22 +70,26 @@ class GraphQLTypeConversionContext:
 
 class TypedGraphqlMiddlewareManager(MiddlewareManager):
     def get_field_resolver(self, field_resolver):
-        def hydrate_field(name: str, value: Any) -> Any:
+        def hydrate_field(name: str, value: Any, parent: type) -> Any:
+
             if not isinstance(value, dict):
                 return value
 
-            annotations = getattr(field_resolver, "__annotations__", {})
+            annotations = getattr(parent, "__annotations__", {})
             try:
                 field_class = annotations[name]
             except KeyError:
                 return value
 
-            snake_case_value = {camel_to_snake(k): v for k, v in value.items()}
+            snake_case_value = {
+                camel_to_snake(k): hydrate_field(k, v, field_class)
+                for k, v in value.items()
+            }
             return field_class(**snake_case_value)
 
         def resolve(data, info, **args):
             args = {
-                camel_to_snake(k): hydrate_field(camel_to_snake(k), v)
+                camel_to_snake(k): hydrate_field(camel_to_snake(k), v, field_resolver)
                 for k, v in args.items()
                 if k not in IMMUTABLE_ARGUMENT_NAMES
             }
@@ -239,7 +243,7 @@ def parse_dataclass_input_fields(
             default_value = f.default
 
         field = InputField(
-            python_type_to_graphql_type(cls, f.type, ctx),
+            python_type_to_graphql_type(cls, f.type, ctx, input_field=True),
             description=arg_name_to_doc.get(f.name),
             default_value=default_value,
         )
