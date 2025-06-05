@@ -70,7 +70,7 @@ class GraphQLTypeConversionContext:
 
 class TypedGraphqlMiddlewareManager(MiddlewareManager):
     def get_field_resolver(self, field_resolver):
-        def hydrate_field(name: str, value: Any, parent) -> Any:
+        def hydrate_field(name: str, value: Any, parent: type) -> Any:
 
             if not isinstance(value, dict):
                 return value
