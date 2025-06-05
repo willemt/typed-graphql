@@ -333,17 +333,17 @@ def test_async_mutation_with_nested_list_dataclass_input_object():
 
     schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
     result = asyncio.new_event_loop().run_until_complete(
-    graphql(
-        schema,
-        """
+        graphql(
+            schema,
+            """
     mutation createUser {
         createUser(user: {cars: [{model: "abc"}, {model: "xxx"}]}) {
             cars { model }
         }
     }
     """,
-        middleware=TypedGraphqlMiddlewareManager(),
-    )
+            middleware=TypedGraphqlMiddlewareManager(),
+        )
     )
     assert result.data == {"createUser": {"cars": [{"model": "xxx"}]}}
 
