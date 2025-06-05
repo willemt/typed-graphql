@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 import enum
 from typing import Any
@@ -6,6 +7,7 @@ from typing import Optional
 from typing import TypedDict
 from typing import NewType
 
+from graphql import graphql
 from graphql import graphql_sync
 from graphql.type import GraphQLSchema
 
@@ -256,12 +258,92 @@ def test_mutation_with_nested_list_dataclass_input_object():
         schema,
         """
     mutation createUser {
-        createUser(user: {cars: [{model: "xxx"}]}) {
+        createUser(user: {cars: [{model: "abc"}, {model: "xxx"}]}) {
             cars { model }
         }
     }
     """,
         middleware=TypedGraphqlMiddlewareManager(),
+    )
+    assert result.data == {"createUser": {"cars": [{"model": "xxx"}]}}
+
+
+def test_mutation_with_nested_snake_case_list_dataclass_input_object():
+    @dataclass
+    class Car:
+        model: str
+
+    class User(dict):
+        def resolve_cars(d, info) -> List[Car]:
+            return [Car("xxx")]
+
+    class Query:
+        @staticresolver
+        def user(data, info) -> str:
+            return ""
+
+    @dataclass
+    class UserInput:
+        cars: List[Car]
+
+    class Mutation:
+        @staticresolver
+        def create_user(data, info, my_user: UserInput) -> User:
+            assert isinstance(my_user.cars[0], Car)
+            return User(cars=[])
+
+    schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
+    result = graphql_sync(
+        schema,
+        """
+    mutation createUser {
+        createUser(myUser: {cars: [{model: "abc"}, {model: "xxx"}]}) {
+            cars { model }
+        }
+    }
+    """,
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    assert result.data == {"createUser": {"cars": [{"model": "xxx"}]}}
+
+
+def test_async_mutation_with_nested_list_dataclass_input_object():
+    @dataclass
+    class Car:
+        model: str
+
+    class User(dict):
+        def resolve_cars(d, info) -> List[Car]:
+            return [Car("xxx")]
+
+    class Query:
+        @staticresolver
+        def user(data, info) -> str:
+            return ""
+
+    @dataclass
+    class UserInput:
+        cars: List[Car]
+
+    class Mutation:
+        @staticresolver
+        async def create_user(data, info, user: UserInput) -> User:
+            assert isinstance(user.cars[0], Car)
+            return User(cars=[])
+
+    schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
+    result = asyncio.new_event_loop().run_until_complete(
+    graphql(
+        schema,
+        """
+    mutation createUser {
+        createUser(user: {cars: [{model: "abc"}, {model: "xxx"}]}) {
+            cars { model }
+        }
+    }
+    """,
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
     )
     assert result.data == {"createUser": {"cars": [{"model": "xxx"}]}}
 

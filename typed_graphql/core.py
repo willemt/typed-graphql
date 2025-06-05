@@ -1,6 +1,7 @@
 import enum
 import inspect
 import sys
+import functools
 from dataclasses import _MISSING_TYPE
 from dataclasses import fields as dataclass_fields
 from dataclasses import is_dataclass
@@ -68,6 +69,12 @@ class GraphQLTypeConversionContext:
         self.input_type_dict = {}
 
 
+def get_annotations(parent: type) -> Dict[str, type]:
+    if isinstance(parent, functools.partial):
+        parent = parent.args[0]
+    return getattr(parent, "__annotations__", {})
+
+
 class TypedGraphqlMiddlewareManager(MiddlewareManager):
     def get_field_resolver(self, field_resolver):
         def hydrate_field(name: str, value: Any, parent: type) -> Any:
@@ -76,7 +83,8 @@ class TypedGraphqlMiddlewareManager(MiddlewareManager):
             elif not isinstance(value, dict):
                 return value
 
-            annotations = getattr(parent, "__annotations__", {})
+            annotations = get_annotations(parent)
+
             try:
                 field_class = annotations[name]
             except KeyError:
