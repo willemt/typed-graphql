@@ -82,8 +82,8 @@ class TypedGraphqlMiddlewareManager(MiddlewareManager):
             except KeyError:
                 return value
 
-            if str(field_class).startswith("typing.List"):
-                field_class = field_class.__args__[0]
+            if get_origin(field_class) is list:
+                field_class = get_args(field_class)[0]
 
             snake_case_value = {
                 camel_to_snake(k): hydrate_field(k, v, field_class)
