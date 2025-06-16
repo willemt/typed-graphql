@@ -1,7 +1,7 @@
 import enum
+import functools
 import inspect
 import sys
-import functools
 from dataclasses import _MISSING_TYPE
 from dataclasses import fields as dataclass_fields
 from dataclasses import is_dataclass
@@ -23,11 +23,10 @@ from typing import get_args
 from typing import get_origin
 
 import docstring_parser
-
 from graphql.execution import MiddlewareManager
+from graphql.pyutils import Undefined
 from graphql.pyutils import camel_to_snake
 from graphql.pyutils import snake_to_camel
-from graphql.pyutils import Undefined
 from graphql.type import GraphQLArgument
 from graphql.type import GraphQLBoolean as Boolean
 from graphql.type import GraphQLEnumType
@@ -42,14 +41,15 @@ from graphql.type import GraphQLObjectType
 from graphql.type import GraphQLScalarType
 from graphql.type import GraphQLString as String
 from graphql.type import GraphQLType
+from typing_inspect import is_new_type
+from typing_inspect import is_optional_type
+from typing_inspect import is_typevar
 
 from typed_graphql.scalars import parse_date
 from typed_graphql.scalars import parse_datetime
 from typed_graphql.scalars import serialize_date
 from typed_graphql.scalars import serialize_datetime
 from typed_graphql.util import get_arg_for_typevar
-
-from typing_inspect import is_new_type, is_optional_type, is_typevar
 
 if sys.version_info >= (3, 10):
     from types import NoneType, UnionType
@@ -233,6 +233,34 @@ def parse_dataclass_fields(cls, ctx: GraphQLTypeConversionContext) -> Dict[str, 
     return fields
 
 
+def parse_annotations_derived_fields(
+    cls, ctx: GraphQLTypeConversionContext
+) -> Dict[str, Field]:
+    fields = {}
+
+    # Obtain docstring
+    docstring = cls.__doc__
+    parsed_docstring = docstring_parser.parse(docstring)
+    arg_name_to_doc = {x.arg_name: x.description for x in parsed_docstring.params}
+
+    for field_name, type in cls.__annotations__.items():
+        if field_name in (getattr(cls, "_resolver_blocklist", None) or []):
+            continue
+        field_name = snake_to_camel(field_name, upper=False)
+
+        def resolver(data, info):
+            return getattr(data, camel_to_snake(info.field_name), None)
+
+        field = Field(
+            python_type_to_graphql_type(cls, type, ctx),
+            resolve=resolver,
+            description=arg_name_to_doc.get(field_name),
+        )
+        fields[field_name] = field
+
+    return fields
+
+
 def parse_dataclass_input_fields(
     cls, ctx: GraphQLTypeConversionContext
 ) -> Dict[str, InputField]:
@@ -341,6 +369,9 @@ def graphql_type(
 
     elif issubclass(cls, dict):
         fields.update(parse_dict_fields(cls, ctx))
+
+    elif hasattr(cls, "__annotations__"):
+        fields.update(parse_annotations_derived_fields(cls, ctx))
 
     resolvers = [
         (attr_name, y)

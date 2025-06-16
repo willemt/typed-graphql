@@ -268,6 +268,47 @@ def test_mutation_with_nested_list_dataclass_input_object():
     assert result.data == {"createUser": {"cars": [{"model": "xxx"}]}}
 
 
+def test_mutation_with_nested_list_class_input_object():
+    class Car:
+        model: str
+
+        def __init__(self, model: str):
+            self.model = model
+
+    class User(dict):
+        def resolve_cars(d, info) -> List[Car]:
+            return [Car("xxx")]
+
+    class Query:
+        @staticresolver
+        def user(data, info) -> str:
+            return ""
+
+    @dataclass
+    class UserInput:
+        cars: List[Car]
+
+    class Mutation:
+        @staticresolver
+        def create_user(data, info, user: UserInput) -> User:
+            assert isinstance(user.cars[0], Car)
+            return User(cars=[])
+
+    schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
+    result = graphql_sync(
+        schema,
+        """
+    mutation createUser {
+        createUser(user: {cars: [{model: "abc"}, {model: "xxx"}]}) {
+            cars { model }
+        }
+    }
+    """,
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    assert result.data == {"createUser": {"cars": [{"model": "xxx"}]}}
+
+
 def test_mutation_with_nested_snake_case_list_dataclass_input_object():
     @dataclass
     class Car:
