@@ -7,6 +7,7 @@ from dataclasses import fields as dataclass_fields
 from dataclasses import is_dataclass
 from datetime import date
 from datetime import datetime
+from decimal import Decimal
 from functools import partial
 from functools import wraps
 from operator import getitem
@@ -418,7 +419,8 @@ def graphql_type(
                 )
             except PythonToGraphQLTypeConversionException:
                 raise TypeUnrepresentableAsGraphql(
-                    f"Type '{param.annotation}' for '{param_name}' of {cls.__name__}.{attr_name} can not be converted to a GraphQL type",
+                    f"Type '{param.annotation}' for '{param_name}' of {cls.__name__}."
+                    f"{attr_name} can not be converted to a GraphQL type",
                 )
 
         try:
@@ -451,7 +453,8 @@ def graphql_type(
             if e.original_exception:
                 # print(inspect.getsource(attr))
                 raise TypeUnrepresentableAsGraphql(
-                    f"Return type {return_type} for {attr_name} can not be converted to a GraphQL type",
+                    f"Return type {return_type} for {attr_name} can not be converted to"
+                    " a GraphQL type",
                     e,
                 )
             raise
@@ -706,6 +709,10 @@ def python_type_to_graphql_type(
                     return GraphQLNonNull(Int)
                 return Int
             elif issubclass(t, float):
+                if nonnull:
+                    return GraphQLNonNull(Float)
+                return Float
+            elif issubclass(t, Decimal):
                 if nonnull:
                     return GraphQLNonNull(Float)
                 return Float

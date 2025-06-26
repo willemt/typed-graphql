@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 from functools import wraps
 from typing import Any
 from typing import Iterable
@@ -188,6 +189,32 @@ def test_expects_int():
     assert str(result.errors[0]).startswith(
         "Int cannot represent non-integer value: 'xxx'"
     )
+
+
+def test_decimal():
+    class Query:
+        @resolver
+        def user(self, info) -> Decimal:
+            return Decimal("10.5")
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user}", Query())
+    assert result.data == {"user": 10.5}
+    assert result.errors is None
+    assert str(graphql_type(Query).fields["user"].type) == "Float!"
+
+
+def test_decimal_int():
+    class Query:
+        @resolver
+        def user(self, info) -> Decimal:
+            return Decimal("10")
+
+    schema = GraphQLSchema(query=graphql_type(Query))
+    result = graphql_sync(schema, "{user}", Query())
+    assert result.data == {"user": 10.0}
+    assert result.errors is None
+    assert str(graphql_type(Query).fields["user"].type) == "Float!"
 
 
 def test_str():
