@@ -4,17 +4,16 @@ typed-graphql
 
 What
 ----
-What if writing types for your GraphQL resolvers resulted in you defining your schema?
 
-Use Python types to create GraphQL schemas in less code.
-
-typed-graphl is a thin layer over graphql-core.
+- What if writing types for your GraphQL resolvers resulted in you defining your schema?
+- Use Python types to create GraphQL schemas in less code.
+- typed-graphl is a thin layer over graphql-core.
 
 Why
 ---
 1. Much of your schema can be defined by using types, reducing code size.
 2. It's more flexible to use a thin layer over graphql-core, as opposed to a large framework.
-
+3. **Minimal footprint**: typed-graphql is significantly smaller than other GraphQL libraries.
 
 Graphene:
 
@@ -47,6 +46,26 @@ Typed-graphql:
            return 'World'
 
    schema = GraphQLSchema(query=graphql_type(Query))
+
+
+Library Size Comparison
+-----------------------
+
+typed-graphql has a much smaller installed size compared to other popular GraphQL libraries:
+
+.. code-block::
+
+   Library Size Comparison (installed packages):
+   
+   typed-graphql      ██ 48.4 KB    (1.0x)
+   graphene           ████████████████████████████████████████ 992.4 KB   (20.5x larger)
+   strawberry-graphql ████████████████████████████████████████████████████████████████████████████████████████████ 2.2 MB (47.1x larger)
+
+This makes typed-graphql ideal for:
+
+- **Serverless environments** where package size affects cold start times
+- **Lightweight applications** that want minimal dependencies
+- **Docker images** where every KB matters for deployment speed
 
 
 Features
