@@ -4,11 +4,10 @@ typed-graphql
 
 What
 ----
-What if writing types for your GraphQL resolvers resulted in you defining your schema?
 
-Use Python types to create GraphQL schemas in less code.
-
-typed-graphl is a thin layer over graphql-core.
+- What if writing types for your GraphQL resolvers resulted in you defining your schema?
+- Use Python types to create GraphQL schemas in less code.
+- typed-graphl is a thin layer over graphql-core.
 
 Why
 ---
@@ -25,8 +24,8 @@ typed-graphql has a much smaller installed size compared to other popular GraphQ
 
    Library Size Comparison (installed packages):
    
-   typed-graphql     ██ 48.4 KB    (1.0x)
-   graphene          ████████████████████████████████████████ 992.4 KB   (20.5x larger)
+   typed-graphql      ██ 48.4 KB    (1.0x)
+   graphene           ████████████████████████████████████████ 992.4 KB   (20.5x larger)
    strawberry-graphql ████████████████████████████████████████████████████████████████████████████████████████████ 2.2 MB (47.1x larger)
 
 This makes typed-graphql ideal for:
