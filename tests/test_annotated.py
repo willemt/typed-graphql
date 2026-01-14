@@ -24,6 +24,9 @@ class NonEmptyString(GraphQLScalarType):
     A custom scalar type for non-empty strings.
     """
 
+    def __new__(cls):
+        return super().__new__(cls, "NonEmptyString")
+
     def __init__(self):
         super().__init__("NonEmptyString")
 
