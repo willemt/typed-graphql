@@ -229,6 +229,12 @@ def test_introspection_query():
                     "locations": ["SCALAR"],
                     "name": "specifiedBy",
                 },
+                {
+                    "args": [],
+                    "description": "Indicates an Input Object is a OneOf Input Object.",
+                    "locations": ["INPUT_OBJECT"],
+                    "name": "oneOf",
+                },
             ],
             "mutationType": None,
             "queryType": {"name": "Query"},
@@ -404,7 +410,7 @@ def test_introspection_query():
                         {
                             "args": [],
                             "deprecationReason": None,
-                            "description": "If this server support "
+                            "description": "If this server supports "
                             "subscription, the type "
                             "that subscription "
                             "operations will be rooted "
@@ -664,6 +670,18 @@ def test_introspection_query():
                             "type": {
                                 "kind": "OBJECT",
                                 "name": "__Type",
+                                "ofType": None,
+                            },
+                        },
+                        {
+                            "args": [],
+                            "deprecationReason": None,
+                            "description": None,
+                            "isDeprecated": False,
+                            "name": "isOneOf",
+                            "type": {
+                                "kind": "SCALAR",
+                                "name": "Boolean",
                                 "ofType": None,
                             },
                         },
