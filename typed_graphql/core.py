@@ -115,6 +115,10 @@ class TypedGraphqlMiddlewareManager(MiddlewareManager):
                     elif args[0] is NoneType:
                         field_class = args[1]
 
+            # After unwrapping Optional, check if we have a List type
+            if get_origin(field_class) is list:
+                field_class = get_args(field_class)[0]
+
             snake_case_value = {
                 camel_to_snake(k): hydrate_field(k, v, field_class)
                 for k, v in value.items()
