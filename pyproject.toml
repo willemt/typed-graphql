@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "typed-graphql"
-version = "0.49.0"
+version = "0.50.0"
 description = "Use types to have a simpler graphql implementation"
 authors = ["Willem Thiart <himself@willemthiart.com>"]
 license = "BSD-3-clause"
@@ -13,7 +13,6 @@ typing-inspect = "^0.7.1"
 docstring-parser = "^0.14.1"
 
 [tool.poetry.dev-dependencies]
-pudb = "^2019.2"
 pytest = "^7.4.4"
 
 [build-system]
