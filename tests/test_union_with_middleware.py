@@ -110,3 +110,52 @@ def test_with_execute_middleware():
     )
     print(f"Result with middleware: {result}")
     assert result.errors is None or len(result.errors) == 0, f"Errors: {result.errors}"
+
+
+def test_optional_list_with_middleware():
+    """Test Optional[List[...]] with middleware
+
+    This test reproduces the 'Type List cannot be instantiated' error
+    that occurs when using middleware with Optional[List[...]] fields.
+    """
+    received_config = None
+
+    class TestMutation:
+        """Mutation root"""
+
+        @staticmethod
+        def resolve_save_config(data, info, config: ConfigInput) -> str:
+            nonlocal received_config
+            received_config = config
+            return "Saved"
+
+    schema = GraphQLSchema(
+        query=graphql_type(Query), mutation=graphql_type(TestMutation)
+    )
+
+    result = graphql_sync(
+        schema,
+        """
+        mutation {
+            saveConfig(config: {items: [{value: "test"}, {value: "test2"}]})
+        }
+        """,
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    print(f"Result with middleware (Optional[List]): {result}")
+    assert result.errors is None or len(result.errors) == 0, f"Errors: {result.errors}"
+
+    # Verify hydration produced correct types
+    assert isinstance(
+        received_config, ConfigInput
+    ), f"Expected ConfigInput, got {type(received_config)}"
+    assert received_config.items is not None
+    assert len(received_config.items) == 2
+    assert isinstance(
+        received_config.items[0], MetadataInput
+    ), f"Expected MetadataInput, got {type(received_config.items[0])}"
+    assert isinstance(
+        received_config.items[1], MetadataInput
+    ), f"Expected MetadataInput, got {type(received_config.items[0])}"
+    assert received_config.items[0].value == "test"
+    assert received_config.items[1].value == "test2"
