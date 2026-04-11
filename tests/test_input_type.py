@@ -58,6 +58,22 @@ def test_nested_dataclass_input():
     assert str(x.fields["badges"].type) == "[BadgeInput!]!"
 
 
+def test_nested_dataclass_input_pep585_list():
+    @dataclass
+    class Badge:
+        level: int
+
+    @dataclass
+    class UserInput:
+        name: str
+        badges: list[Badge]
+
+    x = graphql_input_type(UserInput)
+    assert x.fields.keys() == {"name", "badges"}
+    assert str(x.fields["name"].type) == "String!"
+    assert str(x.fields["badges"].type) == "[BadgeInput!]!"
+
+
 def test_nested_input():
     class AddressInput(TypedDict):
         name: str
