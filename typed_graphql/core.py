@@ -665,7 +665,9 @@ def python_type_to_graphql_type(
     if str(t).startswith("graphql.type.definition.GraphQLList"):
         assert len(t.__args__) == 1
         return GraphQLList(
-            python_type_to_graphql_type(cls, t.__args__[0], ctx, nonnull=True)
+            python_type_to_graphql_type(
+                cls, t.__args__[0], ctx, nonnull=True, input_field=input_field
+            )
         )
     elif is_annotated(t):
         # if a GraphQLType is in the annotation, we use that as an override
