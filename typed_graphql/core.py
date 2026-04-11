@@ -22,6 +22,7 @@ from typing import TypeVar
 from typing import cast
 from typing import get_args
 from typing import get_origin
+from typing import get_type_hints
 
 import docstring_parser
 from graphql.execution import MiddlewareManager
@@ -70,13 +71,28 @@ class GraphQLTypeConversionContext:
         self.input_type_dict = {}
 
 
-def get_annotations(parent: type) -> Dict[str, type]:
-    if isinstance(parent, functools.partial):
-        parent = parent.args[0]
-    return getattr(parent, "__annotations__", {})
+def resolve_type_hints(obj: Any) -> Dict[str, Any]:
+    try:
+        return get_type_hints(obj, include_extras=True)
+    except Exception:
+        return dict(getattr(obj, "__annotations__", {}) or {})
 
 
 class TypedGraphqlMiddlewareManager(MiddlewareManager):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._hints_cache: Dict[Any, Dict[str, Any]] = {}
+
+    def _resolve_hints(self, parent: Any) -> Dict[str, Any]:
+        if isinstance(parent, functools.partial):
+            parent = parent.args[0]
+        cached = self._hints_cache.get(parent)
+        if cached is not None:
+            return cached
+        hints = resolve_type_hints(parent)
+        self._hints_cache[parent] = hints
+        return hints
+
     def get_field_resolver(self, field_resolver):
         def hydrate_field(name: str, value: Any, parent: type) -> Any:
             if isinstance(value, list):
@@ -84,7 +100,7 @@ class TypedGraphqlMiddlewareManager(MiddlewareManager):
             elif not isinstance(value, dict):
                 return value
 
-            annotations = get_annotations(parent)
+            annotations = self._resolve_hints(parent)
 
             try:
                 field_class = annotations[name]
@@ -195,7 +211,7 @@ def graphql_input_type(
 
     public_attrs = (
         (attr_name, y)
-        for attr_name, y in cls.__annotations__.items()
+        for attr_name, y in resolve_type_hints(cls).items()
         if not attr_name.startswith("_")
     )
 
@@ -241,6 +257,8 @@ def parse_dataclass_fields(cls, ctx: GraphQLTypeConversionContext) -> Dict[str, 
     parsed_docstring = docstring_parser.parse(docstring)
     arg_name_to_doc = {x.arg_name: x.description for x in parsed_docstring.params}
 
+    hints = resolve_type_hints(cls)
+
     for f in dataclass_fields(cls):
         if f.name in (getattr(cls, "_resolver_blocklist", None) or []):
             continue
@@ -250,7 +268,7 @@ def parse_dataclass_fields(cls, ctx: GraphQLTypeConversionContext) -> Dict[str, 
             return getattr(data, camel_to_snake(info.field_name), None)
 
         field = Field(
-            python_type_to_graphql_type(cls, f.type, ctx),
+            python_type_to_graphql_type(cls, hints.get(f.name, f.type), ctx),
             resolve=resolver,
             description=arg_name_to_doc.get(f.name),
         )
@@ -269,7 +287,7 @@ def parse_annotations_derived_fields(
     parsed_docstring = docstring_parser.parse(docstring)
     arg_name_to_doc = {x.arg_name: x.description for x in parsed_docstring.params}
 
-    for field_name, type in cls.__annotations__.items():
+    for field_name, type in resolve_type_hints(cls).items():
         if field_name in (getattr(cls, "_resolver_blocklist", None) or []):
             continue
         field_name = snake_to_camel(field_name, upper=False)
@@ -297,6 +315,8 @@ def parse_dataclass_input_fields(
     parsed_docstring = docstring_parser.parse(docstring)
     arg_name_to_doc = {x.arg_name: x.description for x in parsed_docstring.params}
 
+    hints = resolve_type_hints(cls)
+
     for f in dataclass_fields(cls):
         if f.name in (getattr(cls, "_resolver_blocklist", None) or []):
             continue
@@ -310,7 +330,9 @@ def parse_dataclass_input_fields(
             default_value = f.default
 
         field = InputField(
-            python_type_to_graphql_type(cls, f.type, ctx, input_field=True),
+            python_type_to_graphql_type(
+                cls, hints.get(f.name, f.type), ctx, input_field=True
+            ),
             description=arg_name_to_doc.get(f.name),
             default_value=default_value,
         )
@@ -327,7 +349,7 @@ def parse_dict_fields(cls, ctx: GraphQLTypeConversionContext) -> Dict[str, Field
     parsed_docstring = docstring_parser.parse(docstring)
     arg_name_to_doc = {x.arg_name: x.description for x in parsed_docstring.params}
 
-    annotations = getattr(cls, "__annotations__", {})
+    annotations = resolve_type_hints(cls)
     for name, type in annotations.items():
         if name in (getattr(cls, "_resolver_blocklist", None) or []):
             continue
@@ -420,6 +442,10 @@ def graphql_type(
             "_" in param_name for param_name, param in params[arg_offset:]
         )
 
+        method_hints = resolve_type_hints(
+            attr.__func__ if is_staticmethod(attr) else attr
+        )
+
         # Obtain docstring
         if is_staticmethod(attr):
             docstring = attr.__func__.__doc__
@@ -432,11 +458,10 @@ def graphql_type(
         args = {}
 
         for param_name, param in params[arg_offset:]:
+            annotation = method_hints.get(param_name, param.annotation)
             try:
                 args[snake_to_camel(param_name, upper=False)] = GraphQLArgument(
-                    python_type_to_graphql_type(
-                        cls, param.annotation, ctx, input_field=True
-                    ),
+                    python_type_to_graphql_type(cls, annotation, ctx, input_field=True),
                     description=arg_name_to_doc.get(param_name, ""),
                     default_value=(
                         param.default if param.default != inspect._empty else Undefined
@@ -444,15 +469,14 @@ def graphql_type(
                 )
             except PythonToGraphQLTypeConversionException:
                 raise TypeUnrepresentableAsGraphql(
-                    f"Type '{param.annotation}' for '{param_name}' of {cls.__name__}."
+                    f"Type '{annotation}' for '{param_name}' of {cls.__name__}."
                     f"{attr_name} can not be converted to a GraphQL type",
                 )
 
         try:
-            return_type = cls.__annotations__[attr_name].__args__[-1]
+            return_type = resolve_type_hints(cls)[attr_name].__args__[-1]
         except (AttributeError, KeyError):
-            return_type = signature.return_annotation
-            # return_type = attr.__annotations__["return"]
+            return_type = method_hints.get("return", signature.return_annotation)
 
         # TODO: Need async version
         def resolver_shim(func, data, info, *args, **kwargs):
