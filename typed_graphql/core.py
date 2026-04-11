@@ -632,7 +632,9 @@ def python_type_to_graphql_type(
         if origin is list or origin is set:
             assert len(t.__args__) == 1
             _t = GraphQLList(
-                python_type_to_graphql_type(cls, t.__args__[0], ctx, nonnull=True)
+                python_type_to_graphql_type(
+                    cls, t.__args__[0], ctx, nonnull=True, input_field=input_field
+                )
             )
             if nonnull:
                 return GraphQLNonNull(_t)
