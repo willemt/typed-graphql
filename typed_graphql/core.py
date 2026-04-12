@@ -48,6 +48,7 @@ from typing_inspect import is_new_type
 from typing_inspect import is_optional_type
 from typing_inspect import is_typevar
 
+from typed_graphql.scalars import newtype_to_scalar
 from typed_graphql.scalars import parse_date
 from typed_graphql.scalars import parse_datetime
 from typed_graphql.scalars import serialize_date
@@ -726,13 +727,17 @@ def python_type_to_graphql_type(
             raise Exception
 
     elif is_new_type(t):
-        return python_type_to_graphql_type(
-            cls,
-            t.__supertype__,
-            ctx,
-            input_field=input_field,
-            nonnull=nonnull,
-        )
+        try:
+            scalar = ctx.type_dict.get(id(t)) or newtype_to_scalar(t)
+            ctx.type_dict[id(t)] = scalar
+        except Exception:
+            # Supertype not a primitive — fall through to its underlying type
+            return python_type_to_graphql_type(
+                cls, t.__supertype__, ctx, input_field=input_field, nonnull=nonnull
+            )
+        if nonnull:
+            return GraphQLNonNull(scalar)
+        return scalar
 
     elif is_dataclass(t):
         _t = graphql_type(t, input_field=input_field, ctx=ctx)

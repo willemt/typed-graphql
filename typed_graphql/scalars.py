@@ -15,7 +15,6 @@ def newtype_to_scalar(t) -> GraphQLScalarType:
     if t.__supertype__ is int:
         scalar = GraphQLScalarType(
             name=t.__name__,
-            # description=
             serialize=scalars.serialize_int,
             parse_value=scalars.coerce_int,
             parse_literal=scalars.parse_int_literal,
@@ -42,7 +41,12 @@ def newtype_to_scalar(t) -> GraphQLScalarType:
             parse_literal=scalars.parse_float_literal,
         )
     else:
-        raise Exception(f"Unknown scalar type: {t.__supertype__}")
+        raise Exception(
+            f"NewType '{t.__name__}' has supertype '{t.__supertype__}' which cannot be"
+            " auto-mapped to a GraphQL scalar. Set"
+            f" {t.__name__}._graphql_type = GraphQLScalarType(...) to provide custom"
+            " serialize/parse_value functions."
+        )
 
     t._graphql_type = scalar
     return scalar
