@@ -36,10 +36,13 @@ def test_missing_type():
             return [User()]
 
     try:
-        graphql_type(Query)
-    except Exception as e:
+        # Building a schema resolves all thunks, surfacing type errors in nested types
+        GraphQLSchema(query=graphql_type(Query))
+    except TypeError as e:
+        # graphql-core wraps thunk exceptions in TypeError; unwrap to check cause
+        cause = e.__cause__
         assert (
-            e.name
+            cause.name
             == "Type '<class 'inspect._empty'>' for 'data' of User.resolve_xxx can not be converted to a GraphQL type"
         )
     else:
