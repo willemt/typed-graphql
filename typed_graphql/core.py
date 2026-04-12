@@ -107,33 +107,26 @@ class TypedGraphqlMiddlewareManager(MiddlewareManager):
             except KeyError:
                 return value
 
-            if get_origin(field_class) is list:
-                field_class = get_args(field_class)[0]
-
-            if is_optional_type(field_class):
-                # Extract the non-None type from the Union
-                args = get_args(field_class)
-                if args and len(args) >= 2:
-                    # Get the first non-None type
+            # Peel Optional and list wrappers until we reach the concrete class.
+            # Handles arbitrary nesting: Optional[list[Optional[list[Optional[T]]]]]
+            while True:
+                if is_optional_type(field_class):
+                    args = get_args(field_class)
                     field_class = next(
                         (arg for arg in args if arg is not type(None)), None
                     )
                     if field_class is None:
                         return value
-
-            elif UnionType is not None and type(field_class) is UnionType:
-                # Handle Python 3.10+ union syntax (X | None)
-                args = get_args(field_class)
-                if args and len(args) == 2:
-                    # Get the non-None type
-                    if args[1] is NoneType:
-                        field_class = args[0]
-                    elif args[0] is NoneType:
-                        field_class = args[1]
-
-            # After unwrapping Optional, check if we have a List type
-            if get_origin(field_class) is list:
-                field_class = get_args(field_class)[0]
+                elif UnionType is not None and type(field_class) is UnionType:
+                    args = get_args(field_class)
+                    inner = next((arg for arg in args if arg is not NoneType), None)
+                    if inner is None:
+                        return value
+                    field_class = inner
+                elif get_origin(field_class) is list:
+                    field_class = get_args(field_class)[0]
+                else:
+                    break
 
             snake_case_value = {
                 camel_to_snake(k): hydrate_field(k, v, field_class)
