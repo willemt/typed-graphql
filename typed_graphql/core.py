@@ -428,6 +428,8 @@ def graphql_type(
         if is_resolver(y)
     ]
 
+    cls_hints = resolve_type_hints(cls)
+
     for attr_name, attr in resolvers:
         signature = inspect_signature(attr)
         params = list(signature.parameters.items())
@@ -474,7 +476,7 @@ def graphql_type(
                 )
 
         try:
-            return_type = resolve_type_hints(cls)[attr_name].__args__[-1]
+            return_type = cls_hints[attr_name].__args__[-1]
         except (AttributeError, KeyError):
             return_type = method_hints.get("return", signature.return_annotation)
 
