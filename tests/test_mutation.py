@@ -459,3 +459,90 @@ def test_input_with_newtype():
     )
     print(result.errors)
     assert result.data == {"createUser": {"colour": "red"}}
+
+
+def test_optional_list_of_optional_input_objects():
+    """Optional[list[Optional[T]]] on an input field must hydrate correctly."""
+
+    @dataclass
+    class TagInput:
+        name: Optional[str] = None
+
+    @dataclass
+    class ItemInput:
+        title: Optional[str] = None
+        tags: Optional[list[Optional[TagInput]]] = None
+
+    class Query:
+        @staticresolver
+        def ping(data, info) -> str:
+            return "pong"
+
+    class Mutation:
+        @staticresolver
+        def create_item(data, info, item: Optional[ItemInput] = None) -> Optional[str]:
+            if item is None:
+                return None
+            tag_names = [t.name for t in (item.tags or []) if t is not None]
+            return f"{item.title}:{','.join(tag_names)}"
+
+    schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
+    middleware = TypedGraphqlMiddlewareManager()
+
+    # Without tags — must not crash
+    r = graphql_sync(
+        schema,
+        'mutation { createItem(item: {title: "hello"}) }',
+        middleware=middleware,
+    )
+    assert r.errors is None
+    assert r.data == {"createItem": "hello:"}
+
+    # With tags — previously raised "Cannot instantiate typing.Union"
+    r = graphql_sync(
+        schema,
+        'mutation { createItem(item: {title: "hello", tags: [{name: "foo"}, {name: "bar"}]}) }',
+        middleware=middleware,
+    )
+    assert r.errors is None
+    assert r.data == {"createItem": "hello:foo,bar"}
+
+
+def test_deeply_nested_optional_list_input():
+    """Optional[list[Optional[list[Optional[T]]]]] — arbitrary nesting depth."""
+
+    @dataclass
+    class Inner:
+        x: int = 0
+
+    @dataclass
+    class Outer:
+        items: Optional[list[Optional[list[Optional[Inner]]]]] = None
+
+    class Query:
+        @staticresolver
+        def ping(data, info) -> str:
+            return "pong"
+
+    class Mutation:
+        @staticresolver
+        def run(data, info, outer: Optional[Outer] = None) -> Optional[str]:
+            if outer is None or outer.items is None:
+                return "none"
+            total = sum(
+                inner.x
+                for row in outer.items
+                if row is not None
+                for inner in row
+                if inner is not None
+            )
+            return str(total)
+
+    schema = GraphQLSchema(query=graphql_type(Query), mutation=graphql_type(Mutation))
+    r = graphql_sync(
+        schema,
+        "mutation { run(outer: {items: [[{x: 1}, {x: 2}], [{x: 3}]]}) }",
+        middleware=TypedGraphqlMiddlewareManager(),
+    )
+    assert r.errors is None
+    assert r.data == {"run": "6"}
