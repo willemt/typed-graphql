@@ -15,6 +15,7 @@ from typing import Annotated
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import ForwardRef
 from typing import GenericAlias
 from typing import List
 from typing import Optional
@@ -69,6 +70,7 @@ class GraphQLTypeConversionContext:
     def __init__(self):
         self.type_dict = {}
         self.input_type_dict = {}
+        self.type_by_name: Dict[str, GraphQLObjectType] = {}
 
 
 def resolve_type_hints(obj: Any) -> Dict[str, Any]:
@@ -383,7 +385,29 @@ def graphql_type(
     except KeyError:
         pass
 
-    fields = {}
+    docstring = cls.__doc__
+    parsed_docstring = docstring_parser.parse(docstring)
+
+    # Register a stub with a thunk BEFORE building fields so that any recursive
+    # reference to this type (circular or self-referential) finds it in ctx and
+    # short-circuits rather than recursing indefinitely.
+    try:
+        _t = GraphQLObjectType(
+            cls.__name__,
+            lambda: _build_graphql_fields(cls, ctx),
+            description=parsed_docstring.short_description,
+        )
+    except TypeError as e:
+        raise TypeUnrepresentableAsGraphql(cls.__name__, e)
+
+    ctx.type_dict[id(cls)] = _t
+    ctx.type_by_name[cls.__name__] = _t
+
+    return _t
+
+
+def _build_graphql_fields(cls, ctx: GraphQLTypeConversionContext) -> Dict[str, Field]:
+    fields: Dict[str, Field] = {}
 
     def is_staticmethod(o):
         return o.__class__.__name__ == "staticmethod"
@@ -495,7 +519,6 @@ def graphql_type(
             raise ReturnTypeMissing(f"{attr_name} of {cls} is missing return type")
         except TypeUnrepresentableAsGraphql as e:
             if e.original_exception:
-                # print(inspect.getsource(attr))
                 raise TypeUnrepresentableAsGraphql(
                     f"Return type {return_type} for {attr_name} can not be converted to"
                     " a GraphQL type",
@@ -514,20 +537,7 @@ def graphql_type(
         field_name = snake_to_camel(attr_name, upper=False)
         fields[field_name] = field
 
-    docstring = cls.__doc__
-    parsed_docstring = docstring_parser.parse(docstring)
-
-    try:
-        _t = GraphQLObjectType(
-            cls.__name__, fields, description=parsed_docstring.short_description
-        )
-    except TypeError as e:
-        raise TypeUnrepresentableAsGraphql(cls.__name__, e)
-
-    if ctx:
-        ctx.type_dict[id(cls)] = _t
-
-    return _t
+    return fields
 
 
 class PythonToGraphQLTypeConversionException(Exception):
@@ -739,6 +749,31 @@ def python_type_to_graphql_type(
         t = get_arg_for_typevar(t, cls)
         return python_type_to_graphql_type(
             cls, t, ctx, nonnull=nonnull, input_field=input_field
+        )
+
+    elif isinstance(t, ForwardRef):
+        ref_name = t.__forward_arg__
+        # 1. Try to resolve via the parent class's module globals.  This covers
+        #    same-module forward refs and any type that has been imported into
+        #    that module by the time schema building runs.
+        module = sys.modules.get(getattr(cls, "__module__", ""), None)
+        globalns = getattr(module, "__dict__", {}) if module else {}
+        resolved = globalns.get(ref_name)
+        if resolved is not None:
+            return python_type_to_graphql_type(
+                cls, resolved, ctx, nonnull=nonnull, input_field=input_field
+            )
+        # 2. Fall back to ctx.type_by_name — covers cross-module circular refs
+        #    where the target type was pre-registered in the same context.
+        if ref_name in ctx.type_by_name:
+            gql_type = ctx.type_by_name[ref_name]
+            if nonnull:
+                return GraphQLNonNull(gql_type)
+            return gql_type
+        raise TypeUnrepresentableAsGraphql(
+            f"Cannot resolve ForwardRef('{ref_name}'). Make sure the type is defined"
+            " in the same module as the class that references it, or call"
+            " graphql_type() on it before building the schema."
         )
 
     else:

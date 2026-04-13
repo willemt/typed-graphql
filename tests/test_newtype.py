@@ -10,7 +10,6 @@ from typed_graphql import graphql_type
 from typed_graphql import resolverclass
 from typed_graphql import staticresolver
 
-
 MyId = NewType("MyId", str)
 WidgetId = NewType("WidgetId", str)
 

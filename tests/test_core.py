@@ -518,10 +518,13 @@ def test_missing_return_type():
             return "xxx"
 
     try:
-        graphql_type(Query)
-    except ReturnTypeMissing as e:
+        graphql_type(Query).fields  # trigger the thunk
+    except TypeError as e:
+        # graphql-core wraps thunk exceptions in TypeError; unwrap to check cause
+        cause = e.__cause__
+        assert isinstance(cause, ReturnTypeMissing)
         assert (
-            str(e)
+            str(cause)
             == "user of <class 'test_core.test_missing_return_type.<locals>.Query'> is missing return type"
         )
     else:
