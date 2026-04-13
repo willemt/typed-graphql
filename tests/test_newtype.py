@@ -39,7 +39,7 @@ def test_newtype_can_be_nullable():
     schema = GraphQLSchema(query=graphql_type(Query))
     result = graphql_sync(schema, "{user}")
     assert result.errors is None
-    assert str(graphql_type(Query).fields["user"].args["id"].type) == "String"
+    assert str(graphql_type(Query).fields["user"].args["id"].type) == "MyId"
 
 
 def test_newtype_can_be_nullable_with_middleware():
